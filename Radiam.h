@@ -23,7 +23,7 @@ public:
     Wobble() {}
     Wobble(int size) {
         a = Vec(size, 0.0); b = Vec(size, 0.0);
-        imax = Vec(size, 0.0); imin = Vec(size, 0.0);
+        imax = Vec(size, -INF); imin = Vec(size, INF);
     }
     ~Wobble() {}
 };
@@ -38,9 +38,9 @@ private:
     Vec bpp;
     Mat bppm;
     const int _precision;      // # of digits to keep correct;
-    //static const bool _reduced = false;
-    static const bool rdebug = true;
+    static const bool _omit = false;    
     static const bool _matrix = false;    
+    static const bool rdebug = true;
     static const char* base;
     Mat& Get_inner(bool, int, bool);
     void Add_constant(int, int, double, bool);
@@ -86,11 +86,11 @@ public:
     int Check_Difference(const class Matrix&, const class Matrix&);     
     void Output_Difference(int, const class Matrix& ori, const class Matrix& mut);
     ////////
-    bool Under_Prec(double range, double value) {
-        return (log10(abs(range))-log10(value) < -(_precision)-1);
+    bool Under_Prec(double max, double min, double value) {
+        return (log10(max-min)-log10(value) < -(_precision)-3);
     }
     bool Is_Range(int i, int j, int mp) {
-        return (j > _mpoint[mp]+1 && i < _mpoint[mp]);
+        return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);
     }
     int index(int j, int mp, bool inside) {
         if (!inside) mp--;
