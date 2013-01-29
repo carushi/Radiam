@@ -47,12 +47,13 @@ void Radiam::Add_constant_inner(int start, int end, double cons)
 
 bool Radiam::Set_constant_in(int j, int left, int right, int mp) 
 {
-    _wob.a[j] = alpha.outer[j]-ori_alpha.outer[index(j, mp, true)];
+    _wob.a[j] = alpha.outer[j]-ori_alpha.outer[_index[j]];
     double pre = _wob.a[j-_constraint-2];
-    if (j == left+_constraint+2 || pre == _wob.min || pre == _wob.max) {
+    if (In_range(j, left) == 0 || pre == _wob.min || pre == _wob.max) {
         _wob.max = *max_element(_wob.a.begin()+j-_constraint, _wob.a.begin()+j+1);
         _wob.min = *min_element(_wob.a.begin()+j-_constraint, _wob.a.begin()+j+1);
     }
+    if (rdebug) cout << _wob.a[j] << " " << _wob.max << " " << _wob.min << endl;
     if (Under_Prec(_wob.max, _wob.min, alpha.outer[j])) {
         Add_constant(_right_limit[mp] = j+1, right, _constant[mp] = _wob.a[j], true);
         return true;
@@ -62,9 +63,9 @@ bool Radiam::Set_constant_in(int j, int left, int right, int mp)
 
 bool Radiam::Set_constant_out(int j, int left, int right, int mp) 
 {
-    _wob.b[j] = beta.outer[j]-ori_beta.outer[index(j, mp, false)];
+    _wob.b[j] = beta.outer[j]-ori_beta.outer[_index[j]];
     double pre = _wob.b[j+_constraint+2];
-    if (j == right-_constraint-2 || pre == _wob.min || pre == _wob.max) {
+    if (Out_range(j, right) == 0 || pre == _wob.min || pre == _wob.max) {
         _wob.max = *max_element(_wob.b.begin()+j, _wob.b.begin()+j+_constraint+1);
         _wob.min = *min_element(_wob.b.begin()+j, _wob.b.begin()+j+_constraint+1);
     }
@@ -80,8 +81,7 @@ bool Radiam::Set_constant_inner(int j, int left, int right, int mp)
     Get_min_inner(j, mp);
     double pre_max = _wob.imax[j+_constraint+2];
     double pre_min = _wob.imin[j+_constraint+2];
-    if (j == right-_constraint-2 || pre_min == _wob.min || pre_max == _wob.max) {
-        if (rdebug) cout << "?????" << endl;
+    if (Out_range(j, right) == 0 || pre_min == _wob.min || pre_max == _wob.max) {
         _wob.max = *max_element(_wob.imax.begin()+j, _wob.imax.begin()+min(right, j+_constraint+1));
         _wob.min = *min_element(_wob.imin.begin()+j, _wob.imin.begin()+min(right, j+_constraint+1));
     }
@@ -100,8 +100,8 @@ double Radiam::Get_min_inner(int j, int mp)
         Mat& mut = Get_inner(false, type, true);
         Mat& ori = Get_inner(false, type, false);
         for (int i = 0; i < (int)mut[j].size(); i++) {
-            double value = mut[j][i]-ori[index(j, mp, false)][i];
-            if (Is_INF(mut[j][i]) && Is_INF(ori[index(j, mp, false)][i])) continue;
+            double value = mut[j][i]-ori[_index[j]][i];
+            if (Is_INF(mut[j][i]) && Is_INF(ori[_index[j]][i])) continue;
             else if (_wob.imin[j] > value) _wob.imin[j] = value;
             else if (_wob.imax[j] < value) _wob.imax[j] = value;
         }
@@ -129,14 +129,14 @@ void Radiam::Calc_inside()
         int end = (mp == (int)_mpoint.size()-1) ? seq.length : _mpoint[mp+1]-1;
         for (int j = max(start, TURN+1); j <= end; j++) {
             if (rdebug) cout << "-------------------\n-j " << j << endl;    
-            if (j <= start+_constraint+2) {
-               for (int i = min(j-TURN, start+1); i >= max(0, j-_constraint-1); i--) {
-                   if (rdebug) cout << "--i " << i << endl;                
-                   Calc_inside_mat(i, j);
-               }
+            if (In_range(j, start) <= 0) {
+                for (int i = min(j-TURN, start+1); i >= max(0, j-_constraint-1); i--) {
+                    if (rdebug) cout << "--i " << i << endl;                
+                    Calc_inside_mat(i, j);
+                }
             }
             Calc_in_outer(j);
-            if (j >= start+_constraint+2 && Set_constant_in(j, start, end, mp)) break;  //(start+1)+_constraint+1 
+            if (In_range(j, start) >= 0 && Set_constant_in(j, start, end, mp)) break;  //(start+1)+_constraint+1 
         }
     }
 }
@@ -147,7 +147,6 @@ void Radiam::Calc_out_outer()
     {
         int start = _mpoint[mp]+1;
         int end = (mp > 0) ? _mpoint[mp-1]+2 : 0; 
-        cout << "mp" << mp << " " << start << " " << end << endl;
         for (int j = min(start, seq.length-1); j >= end; j--) {
             beta.outer[j] = beta.outer[j+1];
             for (int k = j+TURN; k <= min(j+_constraint+1, seq.length); k++) {
@@ -155,21 +154,18 @@ void Radiam::Calc_out_outer()
                                      Parameter::Sum_Dangle(bp(j+1, k, seq.sequence), j, k+1, seq));
                 beta.outer[j] = Logsumexp(beta.outer[j], temp);
             }
-            if (j <= start-_constraint-2 && Set_constant_out(j, end, start, mp)) break;  // (start-1)-(_constraint+1) 
+            if (Out_range(j, start) <= 0 && Set_constant_out(j, end, start, mp)) break;  // (start-1)-(_constraint+1) 
         }
-
     }
 }
 
 void Radiam::Calc_outside_inner(int j, int mp)
 {
-    for (int i = max(0, j-_constraint-1); i < j-TURN-1; i++) {
+    for (int i = max(0, j-_constraint-1); i < j-TURN-1; i++) 
+    {
         if (rdebug) cout << "--i " << i << " " << _mpoint[mp] << endl;        
         if (i > 0 && j < seq.length) {
-            if (Mtype != Mut) {
-                Calc_outside_mat(i, j);
-                if (rdebug) cout << "calc" << endl;
-            } else if (Is_Range(i, j, mp)) {
+            if (Out_in_range(i, j, mp)) {
                 if (mp > 0) Copy_const_inner(i, j, beta, _constant[mp-1]);
             } else {
                 Calc_outside_mat(i, j);
@@ -180,30 +176,39 @@ void Radiam::Calc_outside_inner(int j, int mp)
     } 
 }
 
+void Radiam::Add_outside_inner(int mp, int& j) 
+{
+    if (In_range(j, _right_limit[mp]) >= 0) {
+        Add_constant_inner(_right_limit[mp]+_constraint+1, j, _constant[mp]);
+        j = _right_limit[mp]+_constraint;
+    } else if (j == seq.length+1) j = seq.length;
+}
+
 void Radiam::Calc_outside()
 {
     Calc_out_outer();
-    int preview = seq.length+1;
-    for (int mp = (int)_mpoint.size()-1; mp >= 0; mp--) {
-        if (mp > 0 && preview > _right_limit[mp]+_constraint+1) {
-            Add_constant_inner(_right_limit[mp]+_constraint+1, preview, _constant[mp]);
-            preview = _right_limit[mp]+_constraint+1;
+    for (int j = seq.length; j >= TURN+1; j--) {
+        if (debug) cout << "----------------\n-j " << j << endl;        
+        for (int i = max(0, j-_constraint-1); i < j-TURN-1; i++) {        
+            if (debug) cout << "--i " << i << endl;            
+            if (i != 0 && j < seq.length) Calc_outside_mat(i, j);
+            beta.stem[j][j-i] = Calc_out_stem(i, j);
         }
-        int j = preview-1;
+    }
+    return;
+    int j = seq.length+1;
+    for (int mp = (int)_mpoint.size()-1; mp >= 0; mp--) {
+        Add_outside_inner(mp, j);
         int end = (mp > 0) ? _mpoint[mp-1]+1 : TURN+1;
         int const_end = (mp > 0) ? _right_limit[mp-1] : TURN+1;
-        if (rdebug) cout  << "start" << j << " " << end << " " << const_end << " " << _mpoint[mp] << endl;
-        for ( ; j >= end; j--) {
+        for (; j >= end; j--) {
             if (rdebug) cout << "----------------\n-j " << j << endl;
             Calc_outside_inner(j, mp);
-            if (_omit && j >= const_end && j <= _mpoint[mp]-_constraint-2) {
-                if (Set_constant_inner(j, end, _mpoint[mp], mp)) {
-                    j = end-1; break;
-                }
-            }
+            if (_omit && Is_out_range(j, const_end, mp) 
+                && Set_constant_inner(j, end, _mpoint[mp], mp)) break;
         }
         if (rdebug) cout << "change " << end << " " << const_end << endl;
-        preview = j+1;
+        j = end;
     }
 }
 
@@ -233,7 +238,7 @@ double Radiam::Calc_bpp_cor(const Vec& bpp_mut, int type)
 
 void Radiam::Calc_matrix(int type, string& sequence)
 {
-    Initialize_seq(sequence);    
+    Initialize_seq(sequence);
     Copy_matrix(type);
     //if (*max_element(_mpoint.begin(), _mpoint.end()) < 46) return;    
     Calc_inside();
@@ -256,6 +261,7 @@ void Radiam::Copy_matrix(int type)
     Mtype = type;
     Set_mpoint(type);
     Set_limit();
+    Set_index();
     alpha = ori_alpha; beta = ori_beta;
     if (type != Mut) {
         for (int i = (int)_mlist.size()-1; i >= 0; i--) {
@@ -267,6 +273,29 @@ void Radiam::Copy_matrix(int type)
         }
     }
     if (rdebug) cout << "size--" << alpha.stem.size() << endl;
+}
+
+void Radiam::Set_index()
+{
+    _index = vector<int>(seq.length+1);
+    for (int ori = 0, mp = 0, mut = 0; mut < seq.length+1; ) {
+        if (Mtype != Mut && _mpoint[mp] == ori) {
+            if (Mtype == In) {
+                _index[mut] = -1;
+                mut++;
+            } else ori++;
+            mp++;
+        } else {
+            _index[mut] = ori;
+            mut++; ori++;
+        }
+    }
+    if (rdebug) {
+        cout << "index : ";
+        ostream_iterator<int> out_it(cout, ", ");
+        copy(_index.begin(), _index.end(), out_it);        
+        cout << endl;
+    }
 }
 
 void Radiam::Set_limit()
@@ -394,7 +423,7 @@ void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
             Output_Difference(temp, alpha, model.alpha); Output_Difference(temp, model.alpha, ori_alpha);
             Print_Mat(true); model.Print_Mat(true);            
         } else {
-            Output_Difference(temp, alpha, model.alpha); Output_Difference(temp, model.alpha, ori_alpha);            
+            Output_Difference(temp, alpha, model.alpha); //Output_Difference(temp, model.alpha, ori_alpha);            
             Print_Mat(true); model.Print_Mat(true);
         }
     } else {
@@ -402,7 +431,7 @@ void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
             Output_Difference(temp, beta, model.beta); Output_Difference(temp, model.beta, ori_beta);
             Print_Mat(false); model.Print_Mat(false);            
         } else {
-            Output_Difference(temp, beta, model.beta); Output_Difference(temp, model.beta, ori_beta);            
+            Output_Difference(temp, beta, model.beta); //Output_Difference(temp, model.beta, ori_beta);            
             Print_Mat(false); model.Print_Mat(false);
         }
     }
@@ -422,9 +451,12 @@ void Radiam::Debug_confirm(int type, string& sequence)
     } else if ((temp = Check_Difference(beta, model2.beta)) > 0) {
         cerr << "Dif" << endl;        
         cout << "Outside Differ!" << temp << endl;
-        if (temp == Multi) cout << "Oh no!" << endl;
         Debug_output(temp, type, false, model2);
-    } else cout << "Same" << endl;
+    } else {
+        cout << "Same" << endl;
+        //compare(0, model2.alpha.outer, alpha.outer);
+        //Print_Mat(true); ori_alpha.Print("");
+    }
 }
 
 bool Radiam::compare_same(int type, const Vec& ori, const Vec& mut) 

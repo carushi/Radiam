@@ -49,6 +49,7 @@ void Matrix::erase(int j)
     multibif.erase(multibif.begin()+j);
     multi1.erase(multi1.begin()+j);
     multi2.erase(multi2.begin()+j);
+    outer.erase(outer.begin()+j);
 }
 
 void Matrix::insert(int j) 
@@ -59,6 +60,7 @@ void Matrix::insert(int j)
     multibif.insert(multibif.begin()+j, Vec(_constraint+2, -INF));
     multi1.insert(multi1.begin()+j, Vec(_constraint+2, -INF));
     multi2.insert(multi2.begin()+j, Vec(_constraint+2, -INF));
+    outer.insert(outer.begin()+j, 0.0);
 }
 
 void Matrix_reduced::Initialize() 

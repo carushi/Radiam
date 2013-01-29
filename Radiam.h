@@ -32,6 +32,7 @@ class Radiam : public Rfold_Lang {
 private:
 	vector<int> _mpoint;
     vector<int> _mlist;
+    vector<int> _index;
     vector<int> _right_limit;  // not constant limit;
 	vector<int> _left_limit;   // not constant limit;
     Vec _constant;
@@ -40,7 +41,7 @@ private:
     const int _precision;      // # of digits to keep correct;
     static const bool _omit = false;    
     static const bool _matrix = false;    
-    static const bool rdebug = true;
+    static const bool rdebug = false;
     static const char* base;
     Mat& Get_inner(bool, int, bool);
     void Add_constant(int, int, double, bool);
@@ -53,6 +54,7 @@ private:
     void Calc_inside();
     void Calc_out_outer();
     void Calc_outside_inner(int, int);    
+    void Add_outside_inner(int, int&);
     void Calc_outside();
 
     void Initialize_seq(string&);
@@ -60,6 +62,7 @@ private:
     void Copy_matrix(int);
     void Set_limit();
     void Set_mpoint(int);
+    void Set_index();
     void Change_sequence(int, int, int, string);
     void All_calculation(int, int, string&);
 
@@ -87,17 +90,33 @@ public:
     void Output_Difference(int, const class Matrix& ori, const class Matrix& mut);
     ////////
     bool Under_Prec(double max, double min, double value) {
-        return (log10(max-min)-log10(value) < -(_precision)-3);
+        return (log10(fabs(max-min))-log10(fabs(value)) < -(_precision)-3);
     }
-    bool Is_Range(int i, int j, int mp) {
-        return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);
+    int In_range(int j, int start) {
+        if (Mtype == Mut) return j-(start+_constraint+2);
+        else if (Mtype == Del) return j-(start+_constraint+2);
+        else return j-(start+_constraint+3); /////////
     }
+    int Out_range(int j, int start) {
+        if (Mtype == Mut) return j-(start-_constraint-2);
+        else return j-(start-_constraint-3);
+    }
+    bool Is_out_range(int j, int const_end, int mp) {
+        if (Mtype == Mut) return (j >= const_end && Out_range(j, _mpoint[mp]) <= 0);
+        else return (j >= const_end && Out_range(j, _mpoint[mp]) <= 0);        
+    }
+    bool Out_in_range(int i, int j, int mp) {
+        if (Mtype == Mut) return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);
+        else return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);        
+    }
+    /*
     int index(int j, int mp, bool inside) {
-        if (!inside) mp--;
+        if (!inside) mp++;
         if (Mtype == Mut) return j;
         else if (Mtype == In) return j-mp;
         else return j+mp;
     }
+    */
 };
 
 }
