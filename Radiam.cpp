@@ -187,15 +187,6 @@ void Radiam::Add_outside_inner(int mp, int& j)
 void Radiam::Calc_outside()
 {
     Calc_out_outer();
-    for (int j = seq.length; j >= TURN+1; j--) {
-        if (debug) cout << "----------------\n-j " << j << endl;        
-        for (int i = max(0, j-_constraint-1); i < j-TURN-1; i++) {        
-            if (debug) cout << "--i " << i << endl;            
-            if (i != 0 && j < seq.length) Calc_outside_mat(i, j);
-            beta.stem[j][j-i] = Calc_out_stem(i, j);
-        }
-    }
-    return;
     int j = seq.length+1;
     for (int mp = (int)_mpoint.size()-1; mp >= 0; mp--) {
         Add_outside_inner(mp, j);
