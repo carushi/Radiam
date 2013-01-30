@@ -39,7 +39,7 @@ private:
     Vec bpp;
     Mat bppm;
     const int _precision;      // # of digits to keep correct;
-    static const bool _omit = false;    
+    static const bool _omit = true;    
     static const bool _matrix = false;    
     static const bool rdebug = false;
     static const char* base;
@@ -107,16 +107,8 @@ public:
     }
     bool Out_in_range(int i, int j, int mp) {
         if (Mtype == Mut) return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);
-        else return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);        
+        else return (j > _mpoint[mp]+_constraint+1 && i < _mpoint[mp]-_constraint-1);
     }
-    /*
-    int index(int j, int mp, bool inside) {
-        if (!inside) mp++;
-        if (Mtype == Mut) return j;
-        else if (Mtype == In) return j-mp;
-        else return j+mp;
-    }
-    */
 };
 
 }
