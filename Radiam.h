@@ -39,7 +39,7 @@ private:
     Vec bpp;
     Mat bppm;
     const int _precision;      // # of digits to keep correct;
-    static const bool _omit = false;    
+    static const bool _omit = true;    
     static const bool _matrix = false;    
     static const bool rdebug = false;
     static const char* base;
