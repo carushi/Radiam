@@ -106,7 +106,6 @@ double Radiam::Get_min_inner(int j, int mp)
     for (int type = Stem; type <= Multibif; type++) {
         Mat& mut = Get_inner(false, type, true);
         Mat& ori = Get_inner(false, type, false);
-        if (_index[j] < 0) cout << "aaaa" << endl;        
         for (int i = 0; i < (int)mut[j].size(); i++) {
             double value = mut[j][i]-ori[_index[j]][i];
             if (Is_INF(mut[j][i]) && Is_INF(ori[_index[j]][i])) continue;
