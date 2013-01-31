@@ -32,18 +32,18 @@ int main(int argc, char** argv)
         return 0;
     }
     */
-    for (int constraint = 10; constraint < 100; constraint += 30) {
-        std::cerr << constraint << endl;        
-         for (int count = 0; count < 1; count++) {
+    for (int constraint = 100; constraint <= 500; constraint += 100) {
+        std::cerr << constraint << endl;
+         for (int count = 0; count < 10; count++) {
             std::string seq = set(count);
-            //std::string seq = "CAUGGCCGAUUAAUAGCAAAGAAGGCCGAACCC";
             Rfold::Running_interface intf((constraint <= 0) ? (int)seq.length() : constraint, seq);
+            intf.Run_Radiam(seq, atoi(argv[1]));
             //intf.Check_Mutation(seq);
-            intf.Run_Radiam(seq, count == 0);
           	//intf.Run_BPP_Rfold_Model(seq);
             //intf.Raw_Compare_BPP_Rfold_Model(seq, count == 0);
+            break;
         }
-        exit(0);
+
 
     }
     return 0;

@@ -38,7 +38,7 @@ public:
     void Check_Mutation(string);
     void Raw_compare_BPP_Rfold_Model(string, bool);
     void Run_BPP_Rfold_Model(string);    
-    void Run_Radiam(string, bool);
+    void Run_Radiam(string, int);
 
 };
 

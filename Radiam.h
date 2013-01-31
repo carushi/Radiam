@@ -1,6 +1,7 @@
 #ifndef _RADIAM_H
 #define _RADIAM_H
 #define DEF_PRE 4
+#include <limits>
 #include "part_func.h"
 #include "param.h"
 
@@ -38,10 +39,11 @@ private:
     Vec _constant;
     Vec bpp;
     Mat bppm;
-    const int _precision;      // # of digits to keep correct;
+    const int _precision;      // # of digits to keep correct;        
     static const bool _omit = true;    
     static const bool _matrix = false;    
     static const bool rdebug = false;
+    static const bool analyze = true;
     static const char* base;
     Mat& Get_inner(bool, int, bool);
     void Add_constant(int, int, double, bool);
@@ -56,17 +58,22 @@ private:
     void Calc_outside_inner(int, int);    
     void Add_outside_inner(int, int&);
     void Calc_outside();
-
+    ///////////
     void Initialize_seq(string&);
-    void Calc_matrix(int, string&);
     void Copy_matrix(int);
     void Set_limit();
     void Set_mpoint(int);
     void Set_index();
-    void Change_sequence(int, int, int, string);
+    void Print_mlist(int, string&);
+    void Change_sequence(int, int, int, string);    
+    void Calc_matrix(int, string&);    
     void All_calculation(int, int, string&);
-
-    double Calc_bpp_cor(const Vec&, int);
+    void Part_calculation(int, int, string&);    
+    double Calc_bpp_cor(const Vec&, const Vec&);
+    double Calc_bpp_cor(const Mat&);
+    double Calc_bpp_cor(const Vec& bpp_mut) {
+        return Calc_bpp_cor(bpp_mut, bpp);
+    }
 
 public:
     int Mtype;
@@ -78,8 +85,11 @@ public:
 	virtual ~Radiam(){}
 	void Mutation_calculation(int, string&);
     void Get_ori_matrix(const string&);
+    void Correlation_of_bpp(int, vector<int>&, int, string);
     void Correlation_of_bpp(int, int, int, string);
     /////////
+    void Debug_bppm(int, string&);
+    void Debug_bpp(int, string&);
     void Debug_confirm(int, string&);
     void Debug_output(int, int, bool, Rfold_Lang&);
     void compare(int, const Vec&, const Vec&);

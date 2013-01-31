@@ -1,6 +1,7 @@
 #ifndef _PART_FUNC_H
 #define _PART_FUNC_H
 
+#include <cstdio>
 #include "matrix.h"
 #include "param.h"
 namespace Rfold {

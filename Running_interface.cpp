@@ -42,8 +42,8 @@ bool Running_interface::compare_same(int type, const Vec& ori, const Vec& mut)
         double value = 0.0;
         if (Is_INF(*it) && Is_INF(*it2)) value = 0.0;
         else if (Is_INF(*it) || Is_INF(*it2)) value = INF;
-        else value = abs(*it-*it2);
-        if (log10(value)-log10(*it) > -DEF_PRE) {
+        else value = exp(*it)-exp(*it2);
+        if (log10(value)-log10(exp(*it)) > -DEF_PRE) {
             cout << value << " " << *it << " " << log10(value) << " " << log10(*it) << " " << DEF_PRE<< endl;
             return true;
         }
@@ -59,7 +59,7 @@ void Running_interface::compare(int type, const Vec& ori, const Vec& mut)
         double value = 0.0;
         if (Is_INF(*it) && Is_INF(*it2)) value = 0.0;
         else if (Is_INF(*it) || Is_INF(*it2)) value = INF;
-        else value = abs(*it-*it2);
+        else value = *it-*it2;
         ofs << value << "\t";
     }
     ofs << endl;
@@ -150,7 +150,6 @@ void Running_interface::Raw_compare_BPP_Rfold_Model(string str, bool first)
             Output_Difference(model1.alpha, model2.alpha);
             Same_Header("> beta", i, sequence[i], base[j], str);    
             Output_Difference(model1.beta, model2.beta);
-            sleep(9);
         }
     }
 }
@@ -162,10 +161,10 @@ void Running_interface::Run_BPP_Rfold_Model(string str)
     model.Write_bpp();        
 }
 
-void Running_interface::Run_Radiam(string str, bool first)
+void Running_interface::Run_Radiam(string str, int precision)
 {
-    Radiam radiam;
-    radiam.Correlation_of_bpp(radiam.Mut, 2, constraint, str);
+    Radiam radiam(precision);
+    radiam.Correlation_of_bpp(radiam.Mut, 1, constraint, str);
 }
 
 }
