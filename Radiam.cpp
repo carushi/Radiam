@@ -263,6 +263,7 @@ void Radiam::Set_limit()
         else _right_limit[i] = seq.length+1;
     }
     _left_limit = vector<int>(k, -1);
+    _inner_limit = vector<int>(k+1, -1);
     _constant = Vec(k, 0.0);
 }
 
@@ -316,9 +317,9 @@ void Radiam::Change_sequence(int type, int k, int i, string sequence)
         }
     }
 }
-
 void Radiam::Calc_matrix(int type, string& sequence)
 {
+    if (_time) { Calc_time(type, sequence); return; }
     Initialize_seq(sequence);
     Copy_matrix(type);
     Calc_inside();
@@ -328,15 +329,7 @@ void Radiam::Calc_matrix(int type, string& sequence)
         Debug_confirm(type, sequence);        
         Debug_bppm(type, sequence);
     }
-    if (_matrix) {
-        Mat bppm_mut;
-        Write_bpp(bppm_mut);
-        cout << "* cor " << Calc_bpp_cor(bppm_mut) << endl;        
-    } else {
-        Vec bpp_mut;
-        Write_bpp(bpp_mut);
-        cout << "* cor " << Calc_bpp_cor(bpp_mut) << endl;
-    }
+    if (window > 0) Calc_bpp_cor();
 }
 
 void Radiam::All_calculation(int type, int k, string& sequence)
@@ -381,17 +374,39 @@ double Radiam::Calc_bpp_cor(const Vec& bpp_mut, const Vec& bpp_ori)
     else return sum_coproduct/sqrt(sum_sq_x*sum_sq_y);
 }
 
-double Radiam::Calc_bpp_cor(const Mat& bppm_mut) 
+void Radiam::Calc_bpp_cor() 
 {
-    Vec bpp_mut, bpp_ori;
-    for (Mat::const_iterator it = bppm.begin(), it2 = bppm_mut.begin(); it != bppm.end() && it2 != bppm_mut.end(); it++, it2++) {
-        for (Vec::const_iterator vit = it->begin(), vit2 = it2->begin(); vit != it->end() && vit2 != it2->end(); vit++, vit2++) {
-            bpp_mut.push_back(*vit); bpp_ori.push_back(*vit2);
+    Vec output;
+    Mat bppm_mut;
+    Write_bpp(bppm_mut);
+    for (int start = window/2; start <= seq.length-window/4; start += window/2) {
+        Vec bpp_mut, bpp_ori;
+        int limit = min(seq.length, start+window/2);
+        for (int i = max(start-window/2, 1); i <= limit; i++) {
+            if (_index[i-1] < 0) continue;
+            for (int j = i+1; j <= limit; j++) {
+                if (_index[j-1] < 0) continue;
+                bpp_mut.push_back(bppm_mut[i-1][j-i]);
+                bpp_ori.push_back(bppm[_index[i-1]-1][_index[j-1]-_index[i-1]]);
+            }
         }
+        output.push_back(Calc_bpp_cor(bpp_mut, bpp_ori));
     }
-    return Calc_bpp_cor(bpp_mut, bpp_ori);
+    Output_correlation(output);
 }
 
+
+void Radiam::Output_correlation(const Vec& output)
+{
+    if ((int)_mlist.size() > 1) return;
+    char m = (Mtype == Del) ? 'X' : seq.sequence[_mpoint[0]];
+    cout << Mtype << "\t" << m << "\t" << _constraint << "\t" << window << "\t";
+    Print_Vec(_mpoint);
+    Print_Vec(_right_limit);
+    Print_Vec(_left_limit);
+    alpha.Print_Vec(output);
+}
+    
 void Radiam::Mutation_calculation(int i, string& sequence) // special function
 {
     _mlist = vector<int>(1, i);
@@ -402,7 +417,7 @@ void Radiam::Get_ori_matrix(const string& sequence)
 {
     Rfold_Lang model;
     model.calculation(_constraint, sequence);
-    (!_matrix) ? model.Write_bpp(bpp) : model.Write_bpp(bppm);
+    model.Write_bpp(bppm);
     ori_alpha = model.alpha;
     ori_beta = model.beta;
 }
@@ -412,7 +427,8 @@ void Radiam::Correlation_of_bpp(int type, vector<int>& mlist, int constraint, st
     Set_Constraint(constraint, (int)sequence.length()+((type == In) ? (int)mlist.size() : 0));
     _mlist = mlist;
     Get_ori_matrix(sequence);
-    cout << sequence << endl;
+    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
+         << _precision << " win:" << window << " cons:" << constraint << endl;
     Part_calculation(type, (int)_mlist.size(), sequence);
 }
 
@@ -421,7 +437,8 @@ void Radiam::Correlation_of_bpp(int type, int k, int constraint, string sequence
     Set_Constraint(constraint, (int)sequence.length()+((type == In) ? k : 0));
     _mlist = vector<int>(k); 
     Get_ori_matrix(sequence);
-    cout << sequence << endl;
+    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
+         << _precision << " win:" << window << " cons:" << constraint << endl;
     All_calculation(type, k, sequence);
 }
 

@@ -4,7 +4,7 @@
 #include "Radiam.h"
 #include <sstream>
 #include <fstream>
-#include <unistd.h>
+
 
 namespace Rfold {
 
@@ -38,7 +38,7 @@ public:
     void Check_Mutation(string);
     void Raw_compare_BPP_Rfold_Model(string, bool);
     void Run_BPP_Rfold_Model(string);    
-    void Run_Radiam(string, int);
+    void Run_Radiam(string, int, int = 0, int = 0);
 
 };
 

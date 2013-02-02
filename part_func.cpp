@@ -261,20 +261,21 @@ void Rfold_Lang::Write_bpp(Vec& data)
     for (int i = 1; i <= seq.length; i++) {
         double value = 0.0;
         for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
-            if (j == i) continue;
-            value += bpp(i, j);
+            if (i == j) continue;
+            else value += bpp(i, j);
         }
         data.push_back(value);
     }
 }
+
 void Rfold_Lang::Write_bpp(Mat& data)
 {
     data.clear();
     for (int i = 1; i <= seq.length; i++) {
         Vec temp;
         for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
-            if (j == i) continue;            
-            temp.push_back(bpp(i, j));
+            if (i == j) temp.push_back(0.0);
+            else temp.push_back(bpp(i, j));
         }
         data.push_back(temp);
     }

@@ -158,13 +158,15 @@ void Running_interface::Run_BPP_Rfold_Model(string str)
 {
     Rfold_Lang model;
     model.calculation(constraint, str);
-    model.Write_bpp();        
+    model.Write_bpp();
 }
 
-void Running_interface::Run_Radiam(string str, int precision)
+void Running_interface::Run_Radiam(string str, int mtype, int precision, int window)
 {
-    Radiam radiam(precision);
-    radiam.Correlation_of_bpp(radiam.Mut, 1, constraint, str);
+    if (precision <= 0) precision = DEF_PRE;
+    if (window > constraint/2 || window < 0) window = constraint/2;
+    Radiam radiam(precision, window);
+    radiam.Correlation_of_bpp(mtype, 1, constraint, str);
 }
 
 }

@@ -2,7 +2,25 @@
 
 namespace Rfold {
 
-  /*      For debug       */
+void Radiam::Calc_time(int type, string& sequence)
+{
+    clock_t t1, t2;
+    t1 = clock();
+    Initialize_seq(sequence); Copy_matrix(type); Calc_inside(); Calc_outside();
+    t2 = clock();
+    cout << "*time\t" << (double)(t2-t1)/CLOCKS_PER_SEC;
+    Rfold_Lang model2;    
+    t1 = clock();
+    model2.calculation(_constraint, sequence);
+    t2 = clock();
+    cout << "\t" << (double)(t2-t1)/CLOCKS_PER_SEC << endl;
+    Mat bpp_mut, bpp_ori;
+    Write_bpp(bpp_mut);
+    model2.Write_bpp(bpp_ori);
+    Write_bppm_dif(bpp_mut, bpp_ori);
+    sleep(1);
+}
+
 void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
 {
     if (inside) {
@@ -10,19 +28,33 @@ void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
             Output_Difference(temp, alpha, model.alpha); Output_Difference(temp, model.alpha, ori_alpha);
             //Print_Mat(true); model.Print_Mat(true);            
         } else {
-            Output_Difference(temp, alpha, model.alpha); //Output_Difference(temp, model.alpha, ori_alpha);            
-            Print_Mat(true); model.Print_Mat(true);
+            Output_Difference(temp, alpha, model.alpha);
+            //Print_Mat(true); model.Print_Mat(true);
         }
     } else {
         if (type == Mut) {
             Output_Difference(temp, beta, model.beta); Output_Difference(temp, model.beta, ori_beta);
             //Print_Mat(false); model.Print_Mat(false);            
         } else {
-            Output_Difference(temp, beta, model.beta); //Output_Difference(temp, model.beta, ori_beta);            
-            Print_Mat(false); model.Print_Mat(false);
+            Output_Difference(temp, beta, model.beta); 
+            //Print_Mat(false); model.Print_Mat(false);
         }
     }
-    //exit(0);
+}
+
+void Radiam::Write_bppm_dif(const Mat& bpp_mut, const Mat& bpp_ori)
+{
+    double tmax = 0.0, t1 = 0.0, t2 = 0.0;
+    for (int i = 0; i < (int)bpp_mut.size(); i++) {
+        if (_index[i] < 0) continue;      
+        for (int j = i+1; j < (int)bpp_mut[i].size(); j++) {
+            if (_index[j] < 0) continue;          
+            if (rdebug) cout << i << "," << j << ": " << bpp_mut[i][j] << endl;
+            double diff = fabs(bpp_ori[_index[i]][_index[j]]-bpp_mut[i][j]);
+            if (tmax < diff) { tmax = diff; t1 = bpp_ori[_index[i]][_index[j]]; t2 = bpp_mut[i][j]; }
+        }
+    }
+    cout << "* bpp_diff_max " << tmax << " " << t1 << " " << t2 << endl;
 }
 
 void Radiam::Debug_bppm(int type, string& sequence)
@@ -32,30 +64,8 @@ void Radiam::Debug_bppm(int type, string& sequence)
     Mat bpp_mut, bpp_ori;
     Write_bpp(bpp_mut);
     model2.Write_bpp(bpp_ori);
-    double tmax = 0.0;
-    for (int i = 0; i < (int)bpp_mut.size(); i++) {
-        for (int j = 0; j < (int)bpp_mut[i].size(); j++) {
-            if (rdebug) cout << i << "," << j << ": " << bpp_mut[i][j] << endl;
-        	  tmax = max(tmax, fabs(bpp_ori[i][j]-bpp_mut[i][j]));                
-        }
-    }
-    cout << "* bpp_diff_max " << tmax << endl;
+    Write_bppm_dif(bpp_mut, bpp_ori);
  }
-
-void Radiam::Debug_bpp(int type, string& sequence)
-{
-    Rfold_Lang model2;
-    model2.calculation(_constraint, sequence);
-    Vec bpp_mut, bpp_ori;
-    Write_bpp(bpp_mut);
-    model2.Write_bpp(bpp_ori);
-    double tmax = 0.0;
-    for (int i = 0; i < (int)sequence.length(); i++) {
-        if (rdebug) cout << i << ": " << bpp_mut[i] << endl;
-        tmax = max(tmax, fabs(bpp_ori[i]-bpp_mut[i]));
-    }
-    cout << "* bpp_diff_max " << tmax << endl;
-}
 
 void Radiam::Debug_confirm(int type, string& sequence)
 {
