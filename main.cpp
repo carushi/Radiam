@@ -38,6 +38,7 @@ struct option* option()
     options[3].flag = 0; options[3].val = 0;
     return options;
 }
+
 void Run_interface(string seq, int mtype, int constraint, int window, int threshold)
 {
     Rfold::Running_interface intf((constraint <= 0) ? (int)seq.length() : constraint, seq);
@@ -74,7 +75,7 @@ int main(int argc, char** argv)
     }
     if (const_flag && (int)seq.length() > 0) Run_interface(seq, mtype, constraint, window, threshold);
     else if (const_flag) {
-        for (int count = 0; count < 10; count++) {
+        for (int count = 0; count < 5; count++) {
             seq = set(count);
             Run_interface(seq, mtype, constraint, window, threshold);
         }
@@ -83,7 +84,7 @@ int main(int argc, char** argv)
             std::cerr << constraint << endl;
             if ((int)seq.length() > 0) Run_interface(seq, mtype, constraint, window, threshold);
             else {
-                for (int count = 0; count < 10; count++) {
+                for (int count = 0; count < 5; count++) {
                     seq = set(count);
                     Run_interface(seq, mtype, constraint, window, threshold);
                     //intf.Check_Mutation(seq);

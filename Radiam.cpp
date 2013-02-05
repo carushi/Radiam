@@ -265,6 +265,10 @@ void Radiam::Set_limit()
     _left_limit = vector<int>(k, -1);
     _inner_limit = vector<int>(k+1, -1);
     _constant = Vec(k, 0.0);
+    if (window > 0) {
+        _window_max = vector<pair<int, double> >(seq.length/window+1, pair<int, double>(0, 0.0));
+        _position_max = vector<pair<char, double> >(seq.length, pair<char, double>(0, 0.0));
+    }
 }
 
 void Radiam::Set_mpoint(int type)
@@ -329,7 +333,7 @@ void Radiam::Calc_matrix(int type, string& sequence)
         Debug_confirm(type, sequence);        
         Debug_bppm(type, sequence);
     }
-    if (window > 0) Calc_bpp_cor();
+    //if (window > 0) Calc_bpp_cor();
 }
 
 void Radiam::All_calculation(int type, int k, string& sequence)
@@ -379,22 +383,34 @@ void Radiam::Calc_bpp_cor()
     Vec output;
     Mat bppm_mut;
     Write_bpp(bppm_mut);
-    for (int start = window/2; start <= seq.length-window/4; start += window/2) {
+    for (int start = window/2; start <= seq.length; start += window/2) {
         Vec bpp_mut, bpp_ori;
         int limit = min(seq.length, start+window/2);
         for (int i = max(start-window/2, 1); i <= limit; i++) {
             if (_index[i-1] < 0) continue;
-            for (int j = i+1; j <= limit; j++) {
-                if (_index[j-1] < 0) continue;
-                bpp_mut.push_back(bppm_mut[i-1][j-i]);
-                bpp_ori.push_back(bppm[_index[i-1]-1][_index[j-1]-_index[i-1]]);
+            for (int j = 0; j+i+1 <= limit; j++) {
+                if (_index[i+j] < 0 || _index[i+j] > _index[i-1]+_constraint) continue;
+                bpp_mut.push_back(bppm_mut[i-1][j]);
+                bpp_ori.push_back(bppm[_index[i-1]][_index[i+j]-_index[i-1]-1]);
             }
         }
         output.push_back(Calc_bpp_cor(bpp_mut, bpp_ori));
     }
-    Output_correlation(output);
+    if (!_general) Output_correlation(output);
+    else Storage_max(output);
 }
 
+void Radiam::Storage_max(const Vec& output)
+{
+    if (_mlist.size() == 1) {
+        _position_max[_mlist[0]] = pair<char, double>((Mtype != Del) ? seq.sequence[_mlist[0]] : 'X',
+                                                      1.0-*min_element(output.begin(), output.end()));
+        for (int i = 0; i < _window_max.size(); i++) {
+            if (1.0-output[i] > _window_max[i].second) 
+                _window_max[i] = pair<int, double>(_mlist[0], 1.0-output[i]);
+        }
+    }
+}
 
 void Radiam::Output_correlation(const Vec& output)
 {
@@ -424,21 +440,21 @@ void Radiam::Get_ori_matrix(const string& sequence)
 
 void Radiam::Correlation_of_bpp(int type, vector<int>& mlist, int constraint, string sequence)
 {
+    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
+         << _precision << " win:" << window << " cons:" << constraint << endl;
     Set_Constraint(constraint, (int)sequence.length()+((type == In) ? (int)mlist.size() : 0));
     _mlist = mlist;
     Get_ori_matrix(sequence);
-    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
-         << _precision << " win:" << window << " cons:" << constraint << endl;
     Part_calculation(type, (int)_mlist.size(), sequence);
 }
 
 void Radiam::Correlation_of_bpp(int type, int k, int constraint, string sequence)
 {
+    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
+         << _precision << " win:" << window << " cons:" << constraint << endl;
     Set_Constraint(constraint, (int)sequence.length()+((type == In) ? k : 0));
     _mlist = vector<int>(k); 
     Get_ori_matrix(sequence);
-    cout << "#-----------------------\n# " << sequence << " dim: " << Mtype << " thres: " 
-         << _precision << " win:" << window << " cons:" << constraint << endl;
     All_calculation(type, k, sequence);
 }
 

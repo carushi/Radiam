@@ -18,7 +18,7 @@ public:
     Matrix beta;
     static const bool noout = true;
     static const bool print = (false && !noout);
-    static const bool debug = (false && print);    
+    static const bool debug = (false && print);
     double Calc_in_stem(int, int);
     double Calc_in_multiBif(int, int);
     double Calc_in_multi2(int, int);
@@ -45,7 +45,7 @@ public:
     double multi2_acc(int, int);
     void Calc_acc();
     double bpp(int, int);
-    void Write_bpp(Vec&);
+    //void Write_bpp(Vec&);
     void Write_bpp(Mat&);    
     void Write_bpp();
 

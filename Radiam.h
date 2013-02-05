@@ -14,6 +14,7 @@ typedef vector<double> Vec;
 typedef vector<Vec> Mat;
 
 using std::transform;
+using std::pair;
 class Wobble
 {
     friend class Radiam;
@@ -41,10 +42,13 @@ private:
 	vector<int> _left_limit;   // not constant limit;
     vector<int> _inner_limit;
     Vec _constant;
+    vector<pair<int, double> > _window_max;
+    vector<pair<char, double> > _position_max;
     Mat bppm;
     const int _precision;      // # of digits to keep correct;        
-    static const bool _omit = true;    
+    static const bool _omit = true;
     static const bool _time = true;
+    static const bool _general = false; // option for general users
     static const bool rdebug = false;
     static const bool analyze = true;
     static const char* base;
@@ -77,6 +81,7 @@ private:
     double Calc_bpp_cor(const Vec&, const Vec&);
     void Calc_bpp_cor();
     void Output_correlation(const Vec&);
+    void Storage_max(const Vec&);
     //
     void Calc_time(int, string&);
     void Write_bppm_dif(const Mat&, const Mat&);

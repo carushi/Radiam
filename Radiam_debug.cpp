@@ -8,7 +8,7 @@ void Radiam::Calc_time(int type, string& sequence)
     t1 = clock();
     Initialize_seq(sequence); Copy_matrix(type); Calc_inside(); Calc_outside();
     t2 = clock();
-    cout << "*time\t" << (double)(t2-t1)/CLOCKS_PER_SEC;
+    cout << "* time\t" << (double)(t2-t1)/CLOCKS_PER_SEC;
     Rfold_Lang model2;    
     t1 = clock();
     model2.calculation(_constraint, sequence);
@@ -46,15 +46,13 @@ void Radiam::Write_bppm_dif(const Mat& bpp_mut, const Mat& bpp_ori)
 {
     double tmax = 0.0, t1 = 0.0, t2 = 0.0;
     for (int i = 0; i < (int)bpp_mut.size(); i++) {
-        if (_index[i] < 0) continue;      
         for (int j = i+1; j < (int)bpp_mut[i].size(); j++) {
-            if (_index[j] < 0) continue;          
             if (rdebug) cout << i << "," << j << ": " << bpp_mut[i][j] << endl;
-            double diff = fabs(bpp_ori[_index[i]][_index[j]]-bpp_mut[i][j]);
-            if (tmax < diff) { tmax = diff; t1 = bpp_ori[_index[i]][_index[j]]; t2 = bpp_mut[i][j]; }
+            double diff = fabs(bpp_ori[i][j]-bpp_mut[i][j]);
+            if (tmax < diff) { tmax = diff; t1 = bpp_ori[i][j]; t2 = bpp_mut[i][j]; }
         }
     }
-    cout << "* bpp_diff_max " << tmax << " " << t1 << " " << t2 << endl;
+    cout << "* same_bpp_diff_max " << tmax << " " << t1 << " " << t2 << endl;
 }
 
 void Radiam::Debug_bppm(int type, string& sequence)

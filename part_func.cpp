@@ -255,29 +255,14 @@ double Rfold_Lang::bpp(int i, int j)
     return exp(Logsum(Logsumexp(stack, stemend), -alpha.outer[seq.length]));
  }
 
-void Rfold_Lang::Write_bpp(Vec& data)
-{
-    data.clear();
-    for (int i = 1; i <= seq.length; i++) {
-        double value = 0.0;
-        for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
-            if (i == j) continue;
-            else value += bpp(i, j);
-        }
-        data.push_back(value);
-    }
-}
-
 void Rfold_Lang::Write_bpp(Mat& data)
 {
     data.clear();
+    data = Mat(seq.length, Vec(_constraint, 0.0)); 
     for (int i = 1; i <= seq.length; i++) {
         Vec temp;
-        for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
-            if (i == j) temp.push_back(0.0);
-            else temp.push_back(bpp(i, j));
-        }
-        data.push_back(temp);
+        for (int j = i+1; j <= min(seq.length, i+_constraint); j++) 
+            data[i-1][j-i-1] = bpp(i, j);
     }
 }
 

@@ -92,7 +92,7 @@ public:
 
 class Matrix {
 public:
-    int _length;     // width
+    int _length; // width
     int _constraint; // height 
     bool _inside;
 	Vec outer;
