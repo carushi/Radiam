@@ -35,6 +35,7 @@ public:
         Set_Files();
     }
     ~Running_interface() {}
+    void RNA_transform(string&);
     void Check_Mutation(string);
     void Raw_compare_BPP_Rfold_Model(string, bool);
     void Run_BPP_Rfold_Model(string);    

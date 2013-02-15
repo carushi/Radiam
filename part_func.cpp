@@ -261,14 +261,19 @@ void Rfold_Lang::Write_bpp(Mat& data)
     data = Mat(seq.length, Vec(_constraint, 0.0)); 
     for (int i = 1; i <= seq.length; i++) {
         Vec temp;
-        for (int j = i+1; j <= min(seq.length, i+_constraint); j++) 
+        for (int j = i+1; j <= min(seq.length, i+_constraint); j++) {
             data[i-1][j-i-1] = bpp(i, j);
+            if (data[i-1][j-i-1] > 1.0) {
+                cerr << "error? " << i << " " << j << " " << data[i-1][j-i-1] << endl;
+                data[i-1][j-i-1] = 1.0;
+            }
+        }
     }
 }
 
 void Rfold_Lang::Write_bpp()
 {
-    //cout.setf(std::ios_base::fixed, std::ios_base::floatfield);    
+    cout.setf(std::ios_base::fixed, std::ios_base::floatfield);    
     for (int i = 1; i <= seq.length; i++) {
         double P[3] = { 1.0, 0.0, 0.0 };
         for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
@@ -277,7 +282,7 @@ void Rfold_Lang::Write_bpp()
             P[0] -= value;            
             (j < i) ? P[2] += value : P[1] += value;
         }
-        if (!noout) cout << "* " << i << " " << P[1] << " " << P[2] << endl;        
+        cout << "* " << i << " " << P[1] << " " << P[2] << endl;        
     }
 }
 

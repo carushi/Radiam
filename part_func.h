@@ -45,7 +45,6 @@ public:
     double multi2_acc(int, int);
     void Calc_acc();
     double bpp(int, int);
-    //void Write_bpp(Vec&);
     void Write_bpp(Mat&);    
     void Write_bpp();
 

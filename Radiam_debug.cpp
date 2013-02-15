@@ -9,7 +9,7 @@ void Radiam::Calc_time(int type, string& sequence)
     Initialize_seq(sequence); Copy_matrix(type); Calc_inside(); Calc_outside();
     t2 = clock();
     cout << "* time\t" << (double)(t2-t1)/CLOCKS_PER_SEC;
-    Rfold_Lang model2;    
+    Rfold_Lang model2;
     t1 = clock();
     model2.calculation(_constraint, sequence);
     t2 = clock();
@@ -52,7 +52,7 @@ void Radiam::Write_bppm_dif(const Mat& bpp_mut, const Mat& bpp_ori)
             if (tmax < diff) { tmax = diff; t1 = bpp_ori[i][j]; t2 = bpp_mut[i][j]; }
         }
     }
-    cout << "* same_bpp_diff_max " << tmax << " " << t1 << " " << t2 << endl;
+    cout << "* same_bpp_diff " << tmax << " " << t1 << " " << t2 << endl;
 }
 
 void Radiam::Debug_bppm(int type, string& sequence)

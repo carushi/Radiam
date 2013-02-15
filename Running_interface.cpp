@@ -2,6 +2,20 @@
 
 namespace Rfold{
 
+void Running_interface::RNA_transform(string& str) 
+{
+    string::iterator it = str.begin();
+    while (it != str.end()) {
+        switch(*it) {
+            case 'A': case 'C': case 'G': case 'U': break;
+            case 'a': case 'c': case 'g': case 'u': *it = toupper(*it); break;
+            case 'T': case 't': *it = 'U'; break;
+            default: *it = 'A';
+        }
+        ++it;
+    }
+}
+
 void Running_interface::Set_Files()
 {
     const char* raw_files[MAXTYPE] = {"outer", "stem", "stemend", "multi", "multi2", "multibif", "multi1"};    
@@ -164,9 +178,12 @@ void Running_interface::Run_BPP_Rfold_Model(string str)
 void Running_interface::Run_Radiam(string str, int mtype, int precision, int window)
 {
     if (precision <= 0) precision = DEF_PRE;
-    if (window > constraint/2 || window < 0) window = constraint/2;
+    if (window < 0) window = constraint/2;
     Radiam radiam(precision, window);
+    RNA_transform(str);
     radiam.Correlation_of_bpp(mtype, 1, constraint, str);
+    //vector<int> mlist = vector<int>(1, 5000);
+    //radiam.Correlation_of_bpp(mtype, mlist, constraint, str);
 }
 
 }

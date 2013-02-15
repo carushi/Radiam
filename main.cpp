@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     }
     if (const_flag && (int)seq.length() > 0) Run_interface(seq, mtype, constraint, window, threshold);
     else if (const_flag) {
-        for (int count = 0; count < 5; count++) {
+        for (int count = 0; count < 100; count++) {
             seq = set(count);
             Run_interface(seq, mtype, constraint, window, threshold);
         }

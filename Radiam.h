@@ -5,6 +5,8 @@
 #include <ctime>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fstream>
+#include <iomanip>
 #include "part_func.h"
 #include "param.h"
 
@@ -15,6 +17,7 @@ typedef vector<Vec> Mat;
 
 using std::transform;
 using std::pair;
+
 class Wobble
 {
     friend class Radiam;
@@ -46,8 +49,9 @@ private:
     vector<pair<char, double> > _position_max;
     Mat bppm;
     const int _precision;      // # of digits to keep correct;        
-    static const bool _omit = true;
-    static const bool _time = true;
+    static const bool _omit = false;
+    static const bool _all_omit = false;
+    static const bool _time = false;
     static const bool _general = false; // option for general users
     static const bool rdebug = false;
     static const bool analyze = true;
@@ -81,6 +85,7 @@ private:
     double Calc_bpp_cor(const Vec&, const Vec&);
     void Calc_bpp_cor();
     void Output_correlation(const Vec&);
+    void Output_storage(const string&);
     void Storage_max(const Vec&);
     //
     void Calc_time(int, string&);
@@ -107,10 +112,12 @@ public:
 	Matrix ori_beta;
     Wobble _wob;
     enum Type { In, Del, Mut, Stem, Stemend, Multi, Multi1, Multi2, Multibif };
-    Radiam(int precision = DEF_PRE, int window = 0) : Rfold_Lang(), _precision(precision), window(window) {}
+    Radiam(int precision = DEF_PRE, int window = 0) : Rfold_Lang(), _precision(precision), window(window) {
+    }
 	virtual ~Radiam(){}
 	void Mutation_calculation(int, string&);
     void Get_ori_matrix(const string&);
+    void Initialize_before_calc(int, int, int, string&);
     void Correlation_of_bpp(int, vector<int>&, int, string);
     void Correlation_of_bpp(int, int, int, string);
     bool Under_Prec(double max, double min, double value) {
