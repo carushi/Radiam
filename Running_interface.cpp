@@ -172,18 +172,20 @@ void Running_interface::Run_BPP_Rfold_Model(string str)
 {
     Rfold_Lang model;
     model.calculation(constraint, str);
-    model.Write_bpp();
+    model.Write_bpp(false);
 }
 
-void Running_interface::Run_Radiam(string str, int mtype, int precision, int window)
+void Running_interface::Run_Radiam(string str, int mtype, int precision, int window, bool init)
 {
-    if (precision <= 0) precision = DEF_PRE;
     if (window < 0) window = constraint/2;
-    Radiam radiam(precision, window);
+    Radiam radiam(precision, window, init);
     RNA_transform(str);
-    radiam.Correlation_of_bpp(mtype, 1, constraint, str);
-    //vector<int> mlist = vector<int>(1, 5000);
-    //radiam.Correlation_of_bpp(mtype, mlist, constraint, str);
+    if (Radiam::_outer_fluc || Radiam::_bpp_fluc) {
+        vector<int> mlist = vector<int>(1, (int)str.length()/2);
+        radiam.Correlation_of_bpp(mtype, mlist, constraint, str);
+    } else {
+        radiam.Correlation_of_bpp(mtype, 1, constraint, str);
+    }
 }
 
 }

@@ -1,12 +1,13 @@
 #ifndef _RADIAM_H
 #define _RADIAM_H
-#define DEF_PRE 4
+#define DEF_PRE (4)
 #include <limits>
 #include <ctime>
 #include <sys/time.h>
 #include <unistd.h>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include "part_func.h"
 #include "param.h"
 
@@ -48,13 +49,8 @@ private:
     vector<pair<int, double> > _window_max;
     vector<pair<char, double> > _position_max;
     Mat bppm;
+    bool _init;
     const int _precision;      // # of digits to keep correct;        
-    static const bool _omit = false;
-    static const bool _all_omit = false;
-    static const bool _time = false;
-    static const bool _general = false; // option for general users
-    static const bool rdebug = false;
-    static const bool analyze = true;
     static const char* base;
     Mat& Get_inner(bool, int, bool);
     void Add_constant(int, int, double, bool);
@@ -70,6 +66,11 @@ private:
     void Calc_outside_inner(int, int);    
     void Add_outside_inner(int, int&);
     void Calc_outside();
+    double Calc_bpp_cor(const Vec&, const Vec&);
+    void Get_cor_vec(int, int, Vec&, Vec&);    
+    void Get_cor_vec(int, int, Vec&, Vec&, const Mat&);
+    void Calc_one_bpp_cor();
+    void Calc_bpp_cor();
     //
     void Initialize_seq(string&);
     void Copy_matrix(int);
@@ -78,17 +79,21 @@ private:
     void Set_index();
     void Print_mlist(int, string&);
     void Change_sequence(int, int, int, string);    
-    //
     void Calc_matrix(int, string&);    
     void All_calculation(int, int, string&);
     void Part_calculation(int, int, string&);
-    double Calc_bpp_cor(const Vec&, const Vec&);
-    void Calc_bpp_cor();
+    void Output_common_data();
+    void Output_correlation(const double);    
     void Output_correlation(const Vec&);
     void Output_storage(const string&);
     void Storage_max(const Vec&);
+    void Set_Output_file();
+    void Set_Correlation(int, int, string&, bool);
     //
     void Calc_time(int, string&);
+    double Get_diff(double, double);
+    void Write_bppm_fluc(const Mat&);
+    void Write_accm_fluc();
     void Write_bppm_dif(const Mat&, const Mat&);
     void Debug_bppm(int, string&);
     void Debug_confirm(int, string&);
@@ -99,10 +104,6 @@ private:
     bool compare_same(int, const Mat&, const Mat&);
     int Check_Difference(const class Matrix&, const class Matrix&);     
     void Output_Difference(int, const class Matrix& ori, const class Matrix& mut);
-    void Print_Vec(const vector<int>& elem) {
-        ostream_iterator<double> out_it(cout, ",");
-        copy(elem.begin(), elem.end(), out_it);        
-    }
 
 public:
     int Mtype;
@@ -111,8 +112,21 @@ public:
 	Matrix ori_alpha;
 	Matrix ori_beta;
     Wobble _wob;
+    string posif, winf, onef;
+    static const bool _acc = true;
+    static const bool rdebug = false;
+    static const bool _time = false; // option for calculation time output;    
+    static const bool _outer_fluc = false; // option for outer fluctuation output;    
+    static const bool _bpp_fluc = true;
+    static const bool _omit = (false || !_outer_fluc); // option for calculation using convergence;
+    static const bool _conv_out = false;
+    static const bool _analyze = false; // option for converge output;
+    static const bool _general = true; // option for general users;
+    static const bool _single = true; // correlation for single window;
+
     enum Type { In, Del, Mut, Stem, Stemend, Multi, Multi1, Multi2, Multibif };
-    Radiam(int precision = DEF_PRE, int window = 0) : Rfold_Lang(), _precision(precision), window(window) {
+    Radiam(int precision = DEF_PRE, int window = 0, bool init = false) : Rfold_Lang(), _precision(precision), window(window), _init(init) {
+
     }
 	virtual ~Radiam(){}
 	void Mutation_calculation(int, string&);
@@ -139,6 +153,9 @@ public:
     bool Out_in_range(int i, int j, int mp) {
         if (Mtype == Mut) return (j > _mpoint[mp]+1 && i < _mpoint[mp]-1);
         else return (j > _mpoint[mp]+_constraint+1 && i < _mpoint[mp]-_constraint-1);
+    }
+    bool General_Output() {
+        return (!_outer_fluc && !_analyze && !_bpp_fluc && window > 0);
     }
 
 };

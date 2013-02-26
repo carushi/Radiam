@@ -1,9 +1,9 @@
 #ifndef _PART_FUNC_H
 #define _PART_FUNC_H
-
 #include <cstdio>
 #include "matrix.h"
 #include "param.h"
+
 namespace Rfold {
 
 class Rfold_Lang {
@@ -45,8 +45,10 @@ public:
     double multi2_acc(int, int);
     void Calc_acc();
     double bpp(int, int);
+    double acc(int, int);
+    void Write_acc(Mat&);
     void Write_bpp(Mat&);    
-    void Write_bpp();
+    void Write_bpp(bool);
 
     void Print_Mat(bool);
     void Initialize();

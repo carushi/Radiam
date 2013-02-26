@@ -89,6 +89,16 @@ public:
              : str(str), sequence(sequence), length(length) {}
     ~Sequence() {}
 };
+template<class Data>
+void Print_Vec(const vector<Data>& elem, bool end = true)
+{
+    ostream_iterator<Data> out_it(cout, ", ");
+    if ((int)elem.size() > 1) {
+        copy(elem.begin(), elem.begin()+sizeof(Data)*((int)elem.size()-1), out_it);
+    }
+    cout << *(elem.begin()+sizeof(Data)*((int)elem.size()-1));
+    if (end) cout << endl;
+}
 
 class Matrix {
 public:
@@ -109,8 +119,7 @@ public:
         outer = Vec(_length+1, 0.0);
     }
     virtual ~Matrix(){}
-    void Initialize();    
-    static void Print_Vec(const Vec&);
+    void Initialize(); 
     static void Print_Mat(const Mat&, const string&);
     void Print(const string&);
     int index(int j) const { return j; }

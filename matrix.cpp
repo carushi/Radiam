@@ -7,20 +7,13 @@ void Matrix::Initialize() {
     = multi2 = Mat(_length+1, Vec(_constraint+2, -INF));    
 }
 
-void Matrix::Print_Vec(const Vec& elem)
-{
-    ostream_iterator<double> out_it(cout, ", ");
-    copy(elem.begin(), elem.end(), out_it);        
-    cout << endl;        
-}
-
 void Matrix::Print_Mat(const Mat& mat, const string& str) 
 {
     for (int i = 0; i < (int)str.length(); i++)
         cout << str[i] << " ";
     cout << endl;
     for (Mat::const_iterator it = mat.begin(); it != mat.end(); it++)  
-        Print_Vec(*it);
+        Print_Vec(*it, true);
 }
 
 void Matrix::Print(const string& str)
@@ -38,7 +31,7 @@ void Matrix::Print(const string& str)
     cout << "---multi2" << endl;
     Print_Mat(multi2, str);        
     cout << "---outer" << endl;
-    Print_Vec(outer);
+    Print_Vec(outer, true);
 }
 
 void Matrix::erase(int j) 

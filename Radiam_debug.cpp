@@ -18,7 +18,6 @@ void Radiam::Calc_time(int type, string& sequence)
     Write_bpp(bpp_mut);
     model2.Write_bpp(bpp_ori);
     Write_bppm_dif(bpp_mut, bpp_ori);
-    sleep(1);
 }
 
 void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
@@ -42,17 +41,74 @@ void Radiam::Debug_output(int temp, int type, bool inside, Rfold_Lang& model)
     }
 }
 
-void Radiam::Write_bppm_dif(const Mat& bpp_mut, const Mat& bpp_ori)
+double Radiam::Get_diff(double a, double b)
 {
-    double tmax = 0.0, t1 = 0.0, t2 = 0.0;
+    double diff = fabs(a-b);
+    if (diff != 0.0) {
+        double relative_diff = log10(diff)-log10(a);
+        return relative_diff;
+    }
+    return -INF;
+}
+
+void Radiam::Write_bppm_fluc(const Mat& bpp_mut)
+{
+    vector<pair<double, double> > max_fluc((int)bpp_mut.size(), pair<double, double>(-INF, 0.0));
     for (int i = 0; i < (int)bpp_mut.size(); i++) {
-        for (int j = i+1; j < (int)bpp_mut[i].size(); j++) {
-            if (rdebug) cout << i << "," << j << ": " << bpp_mut[i][j] << endl;
-            double diff = fabs(bpp_ori[i][j]-bpp_mut[i][j]);
-            if (tmax < diff) { tmax = diff; t1 = bpp_ori[i][j]; t2 = bpp_mut[i][j]; }
+        for (int j = i+1; j < i+1+(int)bpp_mut[i].size(); j++) {
+            double diff = fabs(bpp_mut[i][j-i-1]-bppm[i][j-i-1]);
+            if (diff == 0.0) continue;
+            double relative_diff = log10(diff)-log10(bpp_mut[i][j-i-1]);
+            if (max_fluc[i].first < relative_diff) { 
+                max_fluc[i] = pair<double, double>(relative_diff, bpp_mut[i][j-i-1]);
+            }
+            if (max_fluc[j].first < relative_diff) { 
+                max_fluc[j] = pair<double, double>(relative_diff, bpp_mut[i][j-i-1]); 
+            }
         }
     }
-    cout << "* same_bpp_diff " << tmax << " " << t1 << " " << t2 << endl;
+    for (int i = 0; i < (int)max_fluc.size(); i++) {
+        if (max_fluc[i].first > -INF)
+            cout << "* bpp_fluc " << i+1 << " " << max_fluc[i].first << " " << max_fluc[i].second << endl;
+    }
+}
+
+void Radiam::Write_accm_fluc()
+{
+    vector<pair<double, double> > max_fluc(seq.length, pair<double, double>(-INF, 0.0));
+    for (int i = 1; i <= seq.length; i++) {
+        double a = acc(i, i), relative_diff = Get_diff(a, bppm[i-1][0]);
+        if (max_fluc[i-1].first < relative_diff) { 
+            max_fluc[i-1] = pair<double, double>(relative_diff, a);
+        }
+        if (i == seq.length) break;
+        a = acc(i, i+1); relative_diff = Get_diff(a, bppm[i-1][1]);
+        if (max_fluc[i-1].first < relative_diff) { 
+            max_fluc[i-1] = pair<double, double>(relative_diff, a);
+        }
+        if (max_fluc[i].first < relative_diff) { 
+            max_fluc[i] = pair<double, double>(relative_diff, a);
+        }
+    }
+    for (int i = 0; i < (int)max_fluc.size(); i++) {
+        if (max_fluc[i].first > -INF)
+            cout << "* acc_fluc " << i+1 << " " << max_fluc[i].first << " " << max_fluc[i].second << endl;
+    }
+}
+
+void Radiam::Write_bppm_dif(const Mat& bpp_mut, const Mat& bpp_ori)
+{
+    double tmax = -INF, t1 = 0.0;
+    for (int i = 0; i < (int)bpp_mut.size(); i++) {
+        for (int j = 0; j < (int)bpp_mut[i].size(); j++) {
+            if (rdebug) cout << i << "," << i+1+j << ": " << bpp_mut[i][j] << endl;
+            double relative_diff = Get_diff(bpp_ori[i][j], bpp_mut[i][j]);
+            if (tmax < relative_diff) {
+                tmax = relative_diff; t1 = bpp_ori[i][j];
+            }
+        }
+    }
+    cout << "* same_bpp_fluc " << tmax << " " << t1 << endl;
 }
 
 void Radiam::Debug_bppm(int type, string& sequence)
@@ -60,8 +116,11 @@ void Radiam::Debug_bppm(int type, string& sequence)
     Rfold_Lang model2;
     model2.calculation(_constraint, sequence);
     Mat bpp_mut, bpp_ori;
-    Write_bpp(bpp_mut);
-    model2.Write_bpp(bpp_ori);
+    if (_acc) {
+        Write_acc(bpp_mut); model2.Write_acc(bpp_ori);
+    } else {
+        Write_bpp(bpp_mut); model2.Write_bpp(bpp_ori);
+    }
     Write_bppm_dif(bpp_mut, bpp_ori);
  }
 

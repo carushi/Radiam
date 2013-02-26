@@ -39,10 +39,10 @@ struct option* option()
     return options;
 }
 
-void Run_interface(string seq, int mtype, int constraint, int window, int threshold)
+void Run_interface(string seq, int mtype, int constraint, int window, int threshold, bool init = false)
 {
     Rfold::Running_interface intf((constraint <= 0) ? (int)seq.length() : constraint, seq);
-    intf.Run_Radiam(seq, mtype, threshold, window);
+    intf.Run_Radiam(seq, mtype, threshold, window, init);
 }
 
 int main(int argc, char** argv)
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     int mtype = 2;
     int threshold = DEF_PRE;
     int constraint = 50;    
-    bool const_flag = false;    
+    bool const_flag = false;
     int option_index;    
     string seq;
     struct option *options = option();
@@ -75,18 +75,20 @@ int main(int argc, char** argv)
     }
     if (const_flag && (int)seq.length() > 0) Run_interface(seq, mtype, constraint, window, threshold);
     else if (const_flag) {
-        for (int count = 0; count < 100; count++) {
+        for (int count = 0; count < 10; count++) {
             seq = set(count);
-            Run_interface(seq, mtype, constraint, window, threshold);
+            Run_interface(seq, mtype, constraint, window, threshold, count != 0);
         }
     } else {
         for ( ; constraint <= 400; constraint += 50) {
+            bool init = false;
             std::cerr << constraint << endl;
             if ((int)seq.length() > 0) Run_interface(seq, mtype, constraint, window, threshold);
             else {
                 for (int count = 0; count < 5; count++) {
                     seq = set(count);
-                    Run_interface(seq, mtype, constraint, window, threshold);
+                    Run_interface(seq, mtype, constraint, window, threshold, init);
+                    init = true;
                     //intf.Check_Mutation(seq);
                     //intf.Run_BPP_Rfold_Model(seq);
                    //intf.Raw_Compare_BPP_Rfold_Model(seq, count == 0);
