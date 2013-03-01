@@ -73,6 +73,29 @@ void Radiam::Write_bppm_fluc(const Mat& bpp_mut)
     }
 }
 
+void Radiam::Write_bppm_fluc_abs(const Mat& bpp_mut)
+{
+    vector<pair<double, double> > max_fluc((int)bpp_mut.size(), pair<double, double>(0, 0.0));
+    vector<pair<double, double> > min_fluc((int)bpp_mut.size(), pair<double, double>(0, 0.0));    
+    for (int i = 0; i < (int)bpp_mut.size(); i++) {
+        for (int j = i+1; j < i+1+(int)bpp_mut[i].size(); j++) {
+            double diff = bpp_mut[i][j-i-1]-bppm[i][j-i-1];
+            if (diff >= 0.0) {
+                if (max_fluc[i].first < diff) max_fluc[i] = pair<double, double>(diff, bpp_mut[i][j-i-1]);
+                if (max_fluc[j].first < diff) max_fluc[j] = pair<double, double>(diff, bpp_mut[i][j-i-1]); 
+            } else {
+                if (min_fluc[i].first > diff) min_fluc[i] = pair<double, double>(diff, bpp_mut[i][j-i-1]);
+                if (min_fluc[j].first > diff) min_fluc[j] = pair<double, double>(diff, bpp_mut[i][j-i-1]); 
+            }
+        }
+    }
+    for (int i = 0; i < (int)max_fluc.size(); i++) {
+        if (max_fluc[i].first < 1e-12 && min_fluc[i].first > -1e-12) continue;
+        cout << "* bpp_abs "  << i+1 << " " << max_fluc[i].first << " " << max_fluc[i].second << " "
+        << min_fluc[i].first << " " << min_fluc[i].second << endl;
+    }
+}
+
 void Radiam::Write_accm_fluc()
 {
     vector<pair<double, double> > max_fluc(seq.length, pair<double, double>(-INF, 0.0));
@@ -93,6 +116,23 @@ void Radiam::Write_accm_fluc()
     for (int i = 0; i < (int)max_fluc.size(); i++) {
         if (max_fluc[i].first > -INF)
             cout << "* acc_fluc " << i+1 << " " << max_fluc[i].first << " " << max_fluc[i].second << endl;
+    }
+}
+
+void Radiam::Write_accm_fluc_abs()
+{
+    int start[] = {4, -50, -100, -200, -500, -1000, -2000, -3000};
+    for (int i = 0; i < 8; i++) {
+        int left = _mlist[0]+1+start[i]-10; int right = _mlist[0]+1+start[i];
+        if (left < 1 || right > seq.length) continue;
+        double acc_mut = acc(left, right), a = acc_mut-bppm[left-1][right-left];
+        cout << "* acc_abs " << left << " " << right << " " << a << " " << acc_mut << endl;
+    }
+    for (int i = 1; i < 8; i++) {
+        int left = _mlist[0]+1+start[i]; int right = _mlist[0]+1+start[i]+10;
+        if (left < 1 || right > seq.length) continue;
+        double acc_mut = acc(left, right), a = acc_mut-bppm[left-1][right-left];
+        cout << "* acc_abs " << left << " " << right << " " << a << " " << acc_mut << endl;
     }
 }
 

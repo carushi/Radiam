@@ -188,6 +188,50 @@ void Radiam::Calc_outside_inner(int j, int mp)
     } 
 }
 
+
+void Radiam::Calc_min_inside()
+{
+    for (int mp = 0; mp < (int)_mpoint.size(); mp++) 
+    {
+        int start = _mpoint[mp];
+        int end = (mp == (int)_mpoint.size()-1) ? seq.length : _mpoint[mp+1]-1;
+        for (int j = max(start, TURN+1); j <= end; j++) {
+            if (rdebug) cout << "-------------------\n-j " << j << endl;    
+            if (In_range(j, start) <= 0) {
+                for (int i = min(j-TURN, start+1); i >= max(0, j-_constraint-1); i--) {
+                    if (rdebug) cout << "--i " << i << endl;                
+                    Calc_inside_mat(i, j);
+                }
+            }
+            Calc_in_outer(j);
+            if (!_general && Set_constant_in(j, start, end, mp)) break;  //(start+1)+_constraint+1 
+        }
+    }
+}
+
+void Radiam::Calc_min_outside()
+{
+    ;
+}
+
+void Radiam::Calc_min_out_outer()
+{
+    for (int mp = (int)_mpoint.size()-1; mp >= 0; mp--) 
+    {
+        int start = _mpoint[mp]+1;
+        int end = (mp > 0) ? _mpoint[mp-1]+2 : 0; 
+        for (int j = min(start, seq.length-1); j >= end; j--) {
+            beta.outer[j] = beta.outer[j+1];
+            for (int k = j+TURN; k <= min(j+_constraint+1, seq.length); k++) {
+                double temp = Logsum(alpha.stem[k][k-j], beta.outer[k], 
+                                     Parameter::Sum_Dangle(bp(j+1, k, seq.sequence), j, k+1, seq));
+                beta.outer[j] = Logsumexp(beta.outer[j], temp);
+            }
+            if (!_general && Set_constant_out(j, end, start, mp)) break;  // (start-1)-(_constraint+1) 
+        }
+    }
+}
+
 void Radiam::Add_outside_inner(int mp, int& j) 
 {
     if (In_range(j, _right_limit[mp]) >= 0) {

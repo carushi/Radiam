@@ -63,7 +63,10 @@ private:
     //
     void Calc_inside();
     void Calc_out_outer();
-    void Calc_outside_inner(int, int);    
+    void Calc_outside_inner(int, int);
+    void Calc_min_inside();
+    void Calc_min_out_outer();
+    void Calc_min_outside();
     void Add_outside_inner(int, int&);
     void Calc_outside();
     double Calc_bpp_cor(const Vec&, const Vec&);
@@ -93,7 +96,9 @@ private:
     void Calc_time(int, string&);
     double Get_diff(double, double);
     void Write_bppm_fluc(const Mat&);
+    void Write_bppm_fluc_abs(const Mat&);    
     void Write_accm_fluc();
+    void Write_accm_fluc_abs();    
     void Write_bppm_dif(const Mat&, const Mat&);
     void Debug_bppm(int, string&);
     void Debug_confirm(int, string&);
@@ -113,11 +118,12 @@ public:
 	Matrix ori_beta;
     Wobble _wob;
     string posif, winf, onef;
-    static const bool _acc = true;
+    static const bool _acc = false;
     static const bool rdebug = false;
     static const bool _time = false; // option for calculation time output;    
     static const bool _outer_fluc = false; // option for outer fluctuation output;    
     static const bool _bpp_fluc = true;
+    static const bool _rel = false; // fluctuation of relative_diff;
     static const bool _omit = (false || !_outer_fluc); // option for calculation using convergence;
     static const bool _conv_out = false;
     static const bool _analyze = false; // option for converge output;

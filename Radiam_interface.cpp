@@ -123,10 +123,11 @@ void Radiam::Calc_matrix(int type, string& sequence)
         Debug_confirm(type, sequence);
         Debug_bppm(type, sequence);
     } else if (_bpp_fluc && Mtype == Mut) {
-        if (_acc) Write_accm_fluc();
+        if (_acc && _rel) Write_accm_fluc();
+        else if (_acc) Write_accm_fluc_abs();
         else {
             Mat bpp_mut; Write_bpp(bpp_mut);
-            Write_bppm_fluc(bpp_mut);            
+            (_rel) ? Write_bppm_fluc(bpp_mut) : Write_bppm_fluc_abs(bpp_mut);
         }
     } else if (window > 0) {
         (_single) ? Calc_one_bpp_cor() : Calc_bpp_cor();
@@ -258,7 +259,6 @@ void Radiam::Initialize_before_calc(int type, int k, int constraint, string& seq
     int length = (int)sequence.length()+((type == In) ? k : 0);
     Set_Constraint(constraint, length);
     Set_Output_file();
-    cout << onef << endl;
     if (window > 0) {
         _window_max = vector<pair<int, double> >(length/window, pair<int, double>(0, 1.0));
         _position_max = vector<pair<char, double> >(length, pair<char, double>(0, 1.0));
