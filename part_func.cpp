@@ -24,14 +24,17 @@ double Rfold_Lang::Calc_in_multiBif(int i, int j)
 
 double Rfold_Lang::Calc_in_multi2(int i, int j) 
 {
+    double temp = Logsum(alpha.multi2[j-1][j-1-i], Parameter::logML_BASE());
     int type = bp(i+1, j, seq.sequence);
-	double temp = Logsum(alpha.stem[j][j-i], Parameter::Sum_Dangle(type, i, j+1, seq), Parameter::logMLintern);
-    temp = Logsumexp(temp, alpha.multi2[j-1][j-1-i]+Parameter::logML_BASE());
+    if (Can_bind(type)) {
+	    temp = Logsumexp(temp, Logsum(alpha.stem[j][j-i], Parameter::Sum_Dangle(type, i, j+1, seq), Parameter::logMLintern));
+    }
     return temp;
 }
 
 double Rfold_Lang::Calc_in_multi1(int i, int j) {
-    return Logsumexp(alpha.multi2[j][j-i], alpha.multibif[j][j-i]);
+    double temp = Logsumexp(alpha.multi2[j][j-i], alpha.multibif[j][j-i]);
+    return temp;
 }
 
 double Rfold_Lang::Calc_in_multi(int i, int j) { 
@@ -44,7 +47,7 @@ double Rfold_Lang::Calc_in_stemend(int i, int j)
 {
     int p = i, q = j+1;
     double temp = -INF;
-    if (q <= seq.length && Can_bind(bp(p, q, seq.sequence))) {
+    if (p > 0 && q <= seq.length && Can_bind(bp(p, q, seq.sequence))) {
         temp = Parameter::LogHairpinEnergy(p, q, seq);
         for (int ip = i; ip < j-TURN-1; ip++) {
             for (int jp = max(j-MAXLOOP+(ip-i), ip+TURN+2); jp <= j && (j-jp)+(ip-i) > 0; jp++) {
@@ -67,6 +70,26 @@ void Rfold_Lang::Calc_in_outer(int j)
         double temp = Logsum(alpha.outer[k], alpha.stem[j][j-k], Parameter::Sum_Dangle(bp(k+1, j, seq.sequence), k, j+1, seq));
         alpha.outer[j] = Logsumexp(alpha.outer[j], temp);
     }
+}
+
+void Rfold_Lang::Calc_inside_mat(int i, int j, vector<int>& index) 
+{
+    cout << i << " " << j << " " << _constraint << endl;
+    alpha.stem[j][j-i] = Calc_in_stem(i, j);
+    Print_Vec(index, true);
+    alpha.multibif[j][j-i] = Calc_in_multiBif(i, j);
+    Print_Vec(index, true);    
+    alpha.multi2[j][j-i] = Calc_in_multi2(i, j);
+    Print_Vec(index, true);    
+    double value = Calc_in_multi1(i, j);
+    Print_Vec(index, true);
+    cout << alpha.multi1[j][j-i] << " " << alpha.multi1.size() << " " << alpha.multi1[j].size() << endl;
+    alpha.multi1[j][j-i] = value;
+    Print_Vec(index, true);    
+    alpha.multi[j][j-i] = Calc_in_multi(i, j);
+    Print_Vec(index, true);    
+    alpha.stemend[j][j-i] = Calc_in_stemend(i, j);
+    Print_Vec(index, true);    
 }
 
 void Rfold_Lang::Calc_inside_mat(int i, int j) 
@@ -92,16 +115,19 @@ void Rfold_Lang::Calc_inside()
 
 /* ///////////////////////////////////////////// */
 
-void Rfold_Lang::Calc_out_outer()
-{ 
-    beta.outer[seq.length] = 0.0;
-    for (int j = seq.length-1; j >= 0; j--) {
+void Rfold_Lang::Calc_one_out_outer(int j)
+{
+    if (j == seq.length) beta.outer[seq.length] = 0.0;
+    else {
         beta.outer[j] = beta.outer[j+1];
         for (int k = j+TURN; k <= min(j+_constraint+1, seq.length); k++) {
             double temp = Logsum(alpha.stem[k][k-j], beta.outer[k], Parameter::Sum_Dangle(bp(j+1, k, seq.sequence), j, k+1, seq));
             beta.outer[j] = Logsumexp(beta.outer[j], temp);
         }
     }
+}
+void Rfold_Lang::Calc_out_outer() { 
+    for (int j = seq.length; j >= 0; j--) Calc_one_out_outer(j);
 }
 
 double Rfold_Lang::Calc_out_stemend(int i, int j) {
@@ -253,12 +279,6 @@ double Rfold_Lang::acc(int i, int j)
     value = Logsumexp(value, multi_acc(i, j));  
     value = Logsumexp(value, multi2_acc(i, j));
     value = Logsumexp(value, Logsum(beta.outer[j], alpha.outer[i-1]));
-    if ((debug) && value-alpha.outer[seq.length] >= 1.0e-11) {
-        cout.precision(16);
-        cout << "aa " << hairpin_acc(i, j) << " " << interior_acc(i, j) << " " << multi_acc(i, j) << " " << multi2_acc(i, j);
-        cout << " " << Logsum(beta.outer[j], alpha.outer[i-1]) << endl;    
-        cout << i << " " << j << ": " << value << " " << alpha.outer[seq.length] << endl;
-    }
     return exp(value-alpha.outer[seq.length]);
 }
 
@@ -281,7 +301,7 @@ void Rfold_Lang::Write_bpp(Mat& data)
             data[i-1][j-i-1] = bpp(i, j);
             if (debug) cout << i << " " << j << " " << data[i-1][j-i-1] << endl;
             if (data[i-1][j-i-1] > 1.0) {
-                cerr << "error? " << i << " " << j << " " << data[i-1][j-i-1] << endl;
+                //cerr << "error? " << i << " " << j << " " << data[i-1][j-i-1] << endl;
                 data[i-1][j-i-1] = 1.0;
             }
         }
@@ -300,7 +320,23 @@ void Rfold_Lang::Write_bpp(bool _acc)
             P[0] -= value;            
             (j < i) ? P[2] += value : P[1] += value;
         }
-        if (!_acc) cout << "* " << i << " " << P[1] << " " << P[2] << endl;        
+        if (!_acc) cout << "* " << seq.str[i] << " " << i << " " << P[1] << " " << P[2] << endl;        
+    }
+}
+
+void Rfold_Lang::Write_bpp_part(bool _acc, int start, int end)
+{
+    cout.setf(std::ios_base::fixed, std::ios_base::floatfield);    
+    for (int i = start; i <= end; i++) {
+        double P[3] = { 1.0, 0.0, 0.0 };
+        for (int j = max(1, i-_constraint); j <= min(seq.length, i+_constraint); j++) {
+            if (!_acc && j == i) continue;
+            double value = ((_acc) ? acc(i, j) : bpp(i, j));
+            if (_acc) { cout << "* " << i << " " << j << " " << value << endl; continue; }
+            P[0] -= value;
+            (j < i) ? P[2] += value : P[1] += value;
+        }
+        if (!_acc) cout << "* " << seq.str[i] << " " << i << " " << P[1] << " " << P[2] << endl;        
     }
 }
 
@@ -314,7 +350,7 @@ void Rfold_Lang::Write_acc(Mat& data)
             if (debug) cout << i << " " << j << " " << data[i-1][j-i] << endl;
             if (data[i-1][j-i] > 1.0) {
                 if (data[i-1][j-i]-1.0 >= 1.0e-11) {
-                    cerr << "error? " << i << " " << j << " " << data[i-1][j-i]-1.0 << endl;
+                    ;//cerr << "error? " << i << " " << j << " " << data[i-1][j-i]-1.0 << endl;
                 }
                 data[i-1][j-i] = 1.0;
             }
@@ -348,9 +384,10 @@ void Rfold_Lang::Set_sequence(const string& sequence)
     seq = Sequence(str, num_seq, (int)sequence.length());
 }
 
-void Rfold_Lang::calculation(int constraint, string sequence) 
+void Rfold_Lang::calculation(int constraint, string sequence, bool shrink) 
 {
-    Set_Constraint(constraint, (int)sequence.length());
+    if (shrink) Set_Constraint(constraint, (int)sequence.length());
+    else Set_raw_Constraint(constraint, (int)sequence.length());
     Set_sequence(sequence);    
     Initialize();
     Calc_inside();

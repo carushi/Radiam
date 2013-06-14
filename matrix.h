@@ -93,10 +93,10 @@ template<class Data>
 void Print_Vec(const vector<Data>& elem, bool end = true)
 {
     ostream_iterator<Data> out_it(cout, ", ");
-    if ((int)elem.size() > 1) {
-        copy(elem.begin(), elem.begin()+sizeof(Data)*((int)elem.size()-1), out_it);
-    }
-    cout << *(elem.begin()+sizeof(Data)*((int)elem.size()-1));
+    if ((int)elem.size() > 1) 
+        copy(elem.begin(), elem.begin()+(int)elem.size()-1, out_it);    
+    if ((int)elem.size() > 0)
+        cout << *(elem.begin()+(int)elem.size()-1);
     if (end) cout << endl;
 }
 
@@ -109,9 +109,9 @@ public:
 	Mat stem;
 	Mat stemend;
     Mat multi;
-	Mat multibif;
 	Mat multi1;
 	Mat multi2;
+    Mat multibif;    
     Matrix() {}
     Matrix(int length, int constraint, bool inside)
      : _length(length), _constraint(constraint), _inside(inside) {

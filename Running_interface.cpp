@@ -18,14 +18,21 @@ void Running_interface::RNA_transform(string& str)
 
 void Running_interface::Set_Files()
 {
-    const char* raw_files[MAXTYPE] = {"outer", "stem", "stemend", "multi", "multi2", "multibif", "multi1"};    
-    for (int i = 0; i < MAXTYPE; i++) {
-        files.push_back(raw_files[i]);
-    }
+    ostringstream ss;
 	for (int i = 0; i < MAXTYPE; i++) {
-        ostringstream oss;
-        oss << files[i] << "_" << sequence.length() << "_" << constraint << ".txt";
-        filenames.push_back(oss.str());
+        switch(i) {
+            case 0: ss << "outer"; break;
+            case 1: ss << "stem"; break;
+            case 2: ss << "stemend"; break;
+            case 3: ss << "multi"; break;
+            case 4: ss << "multi"; break;
+            case 5: ss << "multi2"; break;
+            case 6: ss << "multibif"; break;
+            default: ss << "multi1";
+        }
+        ss << '_' << (int)sequence.length() << '_' << constraint << ".txt";
+        filenames.push_back(ss.str());
+        ss.str("");
 	}
 }
 
@@ -170,21 +177,105 @@ void Running_interface::Raw_compare_BPP_Rfold_Model(string str, bool first)
 
 void Running_interface::Run_BPP_Rfold_Model(string str)
 {
+    int band = constraint;
+    if (str.length() < band*2) return;
     Rfold_Lang model;
     model.calculation(constraint, str);
-    model.Write_bpp(false);
+    cout << "# all" << endl;
+    model.Write_bpp_part(false, str.length()/2-band+1, str.length()/2+band);
+    for (int i = band; i < str.length()/2 && i*2 <= constraint*10; i += band) {
+        string seq = str.substr(str.length()/2-i, i*2);
+        model.calculation(constraint, seq);
+        cout << "# " << i << endl;
+        model.Write_bpp_part(false, seq.length()/2-band+1, seq.length()/2+band);
+    }
 }
 
-void Running_interface::Run_Radiam(string str, int mtype, int precision, int window, bool init)
+void Running_interface::Set_consensus_index(Radiam& radiam, string sequence, string bp_seq, vector<int>& index)
 {
-    if (window < 0) window = constraint/2;
-    Radiam radiam(precision, window, init);
-    RNA_transform(str);
-    if (Radiam::_outer_fluc || Radiam::_bpp_fluc) {
-        vector<int> mlist = vector<int>(1, (int)str.length()/2);
-        radiam.Correlation_of_bpp(mtype, mlist, constraint, str);
+    if (bp_seq.length() != sequence.length()) return;
+    for (int i = (int)sequence.length()-1; i >= 0; i--) {
+        if (sequence[i] == '.') {
+            sequence.erase(i, 1);
+            bp_seq.erase(i, 1);
+        } else index.push_back(i);
+    }
+    reverse(index.begin(), index.end());
+    //Print_Vec(index, true);
+    RNA_transform(sequence);
+    radiam.Set_annotate(bp_seq, sequence, index);
+}
+
+
+void Running_interface::Run_Radiam(Arg& arg, vector<string>& seqlist, vector<string>& namelist, bool bpp)
+{
+    vector<string>::iterator it = find(namelist.begin(), namelist.end(), "SS_cons");
+    if (it == namelist.end()) return;
+    int cons = (int)distance(namelist.begin(), it);
+    for (string::iterator it1 = seqlist[cons].begin(); it1 != seqlist[cons].end(); it1++)
+        if (isalpha(*it1)) return;
+    cout << seqlist[cons] << endl;
+    for (int i = 0; i < cons; i++) {
+        vector<int> index;
+        Radiam radiam(arg.filename, arg.acc_flag, arg.threshold, 0, i == 0, arg.dist);
+        radiam.id = i;
+        radiam.Set_region(arg.rightw, arg.  leftw);
+        Set_consensus_index(radiam, seqlist[i], seqlist[cons], index);
+        if (radiam.ori_seq.length() == 0) {
+            cout << "error" << endl;
+            continue;
+        }
+        if (bpp) {
+            radiam.Correlation_of_bpp(arg.mtype, 1, constraint, radiam.ori_seq);
+        } else {
+            radiam.Set_bpp_binary(arg.mtype, constraint, radiam.ori_seq);
+            radiam.Write_bpp_binary();
+        }
+    }
+}
+
+void Running_interface::Run_Radiam(Arg& arg, vector<string>& seqlist, vector<string>& namelist, string& bp_seq, bool bpp)
+{
+    cout << bp_seq << endl;
+    for (int i = 0; i < (int)seqlist.size(); i++) {
+        vector<int> index;
+        Radiam radiam(arg.filename, arg.acc_flag, arg.threshold, 0, i == 0, arg.dist);
+        radiam.id = i;
+        radiam.Set_region(arg.rightw, arg.  leftw);
+        Set_consensus_index(radiam, seqlist[i], bp_seq, index);
+        if (radiam.ori_seq.length() == 0) {
+            cout << "error" << endl;
+            continue;
+        }
+        if (bpp) {
+            radiam.Correlation_of_bpp(arg.mtype, 1, constraint, radiam.ori_seq);
+        } else {
+            radiam.Set_bpp_binary(arg.mtype, constraint, radiam.ori_seq);
+            radiam.Write_bpp_binary();
+        }
+    }
+}
+
+void Running_interface::Run_Radiam(Arg& arg, bool init, int rightw, int leftw)
+{
+    if (arg.seq.length() == 0) return;
+    Radiam radiam(arg.filename, arg.acc_flag, arg.threshold, 0, init, arg.dist);
+    RNA_transform(arg.seq);
+    radiam.Set_region(rightw, leftw);
+    radiam.Correlation_of_bpp(arg.mtype, 1, constraint, arg.seq);
+}
+
+void Running_interface::Run_Radiam(Arg& arg, bool init)
+{
+    if (arg.seq.length() == 0) return;    
+    Radiam radiam(arg.acc_flag, arg.threshold, arg.window, init, arg.dist);
+    RNA_transform(arg.seq);
+    if (arg.example) radiam.Set_example();
+    if (radiam._debug == Radiam::Debug::Outer || radiam._debug == Radiam::Debug::Bpp) {
+        vector<int> mlist = vector<int>(1, (int)(arg.seq.length())/2);
+        radiam.Correlation_of_bpp(arg.mtype, mlist, constraint, arg.seq);
     } else {
-        radiam.Correlation_of_bpp(mtype, 1, constraint, str);
+        radiam.Correlation_of_bpp(arg.mtype, 1, constraint, arg.seq);
     }
 }
 

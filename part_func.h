@@ -27,6 +27,7 @@ public:
     double Calc_in_stemend(int, int);
     void Calc_in_outer(int);
     void Calc_inside_mat(int, int);    
+    void Calc_inside_mat(int, int, vector<int>&);    
     void Calc_inside();
 
     double Calc_out_stem(int, int);
@@ -35,6 +36,7 @@ public:
     double Calc_out_multi1(int, int); 
     double Calc_out_multi(int, int);     
     double Calc_out_stemend(int, int);
+    void Calc_one_out_outer(int);    
     void Calc_out_outer();
     void Calc_outside_mat(int, int);
     void Calc_outside();
@@ -49,18 +51,23 @@ public:
     void Write_acc(Mat&);
     void Write_bpp(Mat&);    
     void Write_bpp(bool);
+    void Write_bpp_part(bool, int, int);
 
     void Print_Mat(bool);
     void Initialize();
     void Set_sequence(const string&);
-    void calculation(int, string);
+    void calculation(int, string, bool shrink = true);
     bool Is_range(int i, int j) { return (i >= j-_constraint-1); }
     void Set_Constraint(int constraint, int length) 
     {
         _length = length;
         _constraint = (constraint > 0) ? min(constraint, _length-1) : _length-1;
     }
-
+    void Set_raw_Constraint(int constraint, int length) 
+    {
+        _length = length;
+        _constraint = constraint;
+    }
 };
 
 
