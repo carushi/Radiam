@@ -108,34 +108,51 @@ void Radiam::Change_sequence(int type, int k, int i, string sequence)
     }
 }
 
+void Radiam::Print_diff() 
+{
+    if (_output == Out::Acc) Output_acc_ene();
+    else (_dist) ? Output_ED_CC() : Output_delta_ene();
+}
+
+void Radiam::Print_neighborhood()
+{
+    if (_output == Out::Acc) Output_acc_around();    
+    else Output_delta_around();
+}
 
 void Radiam::Calc_matrix(int type, string& sequence)
 {
     if (_debug == Debug::Outer) cout << std::setprecision(10);
     Initialize_seq(sequence);
     Copy_matrix(type);
-    if (_mlist.size() == 1 && _debug == Debug::Dif) {
-        Calc_inside();
-        Calc_outside();
-        if (_output == Out::Acc) Output_acc_ene();
-        else {
-            (_dist) ? Output_ED_CC() : Output_delta_ene();
-        }
-    } else if (_mlist.size() == 1 && _debug == Debug::Reg) {
-        if (_cor == Cor::One) {
+    if (_mlist.size() == 1 && _debug == Debug::Reg) {
+        if (_cor == Cor::One && window > 0) {
             leftw = max(1, _mpoint[0]+1-window);
             rightw = min(seq.length, _mpoint[0]+1+window);
+        } else {
+            leftw = max(1, _mpoint[0]-_constraint);
+            rightw = min(seq.length, _mpoint[0]+_constraint);
         }
+        /*
+        Calc_inside(); 
+        Calc_outside();
+        Copy_matrix(type);        
+        */
         Calc_min_inside();
-        Calc_min_outside(Calc_partition_function());
-        //Debug_bppm(type, sequence, leftw, rightw);  
-        Calc_one_bpp_cor();
+        double diff = Calc_partition_function();
+        Calc_min_outside(diff);
+        Print_neighborhood();        
+        //Debug_bppm(type, sequence, leftw, rightw);        
     } else {
         Calc_inside(); 
         Calc_outside();
-        if (_debug != Debug::Reg) Calc_debug(type, sequence);
-        else if (window > 0) Calc_bpp_cor();              
+        if (window > 0 && _debug == Debug::Reg) Calc_bpp_cor();
+        else if (_debug != Debug::Reg) {
+            if (_mlist.size() < 3 && _debug == Debug::Dif) Print_diff();
+            else Calc_debug(type, sequence);
+        }
     }
+    
 }
 
 void Radiam::All_calculation(int type, int k, string& sequence)
@@ -144,7 +161,6 @@ void Radiam::All_calculation(int type, int k, string& sequence)
         int max = (k < (int)_mlist.size()) ? _mlist[k] : (int)sequence.length();
         int min = k-1;
         if (type == In) { max++; min = 0; } // Insertion -> same position OK;
-        cout << "max:" << max << endl;
         for (int i = min; i < max; i++) {
             _mlist[k-1] = i;
             Change_sequence(type, k, i, sequence);
@@ -179,10 +195,10 @@ int Radiam::Calc_bpp_ene(Vec& stem)
 {
     int count = 0;
     for (int i = 1; i <= seq.length; i++) {
-        if (_index[i-1] < 0 || (int)bppm.size() <= _index[i-1]) continue;
+        if (!Both_including(i)) continue;
         for (int j = i+TURN; j <= min(seq.length, i+_constraint); j++) {
-            if (_index[j-1] < 0) continue;
-            double bpp_ori = bppm[_index[i-1]][_index[j-1]-_index[i-1]-1];
+            if (!Both_including(i, j)) continue;
+            double bpp_ori = bppm_get(i, j);
             stem[i-1] += bpp_ori; stem[j-1] += bpp_ori;
         }
         count++;
@@ -190,35 +206,75 @@ int Radiam::Calc_bpp_ene(Vec& stem)
     return count;
 }
 
-int Radiam::Store_stem(vector<double>& stem_m, vector<double>& stem_o)
+
+int Radiam::Get_ori_start(int start, int end)
 {
+    for (int i = start; i <= end; i++) {
+        if (Both_including(i))  return i;
+    }
+    return end;
+}
+
+int Radiam::Get_ori_end(int start, int end)
+{
+    for (int i = end; i >= start; i--) {
+        if (Both_including(i)) return i;
+    }
+    return start;
+}
+
+int Radiam::Get_original_stem(Vec& stem_o, int start, int end)
+{
+    int ostart = Get_ori_start(start, end);
+    int oend = Get_ori_end(start, end);
+    assert(ostart < oend);
     int count = 0;
-    std::vector<int> v;
-    for (int i = 1; i <= seq.length; i++) {
-        if (_index[i-1] < 0 || (int)bppm.size() <= _index[i-1]) continue;
-        assert(_index[i-1] >= 0 && _index[i-1] < seq.length+1);        
-        for (int j = i+TURN; j <= min(seq.length, i+_constraint); j++) {
-            if (_index[j-1] < 0 || (int)bppm[_index[i-1]].size() < _index[j-1]-_index[i-1]) continue;
-            double bpp_mut = bpp(i, j);
-            double bpp_ori = bppm[_index[i-1]][_index[j-1]-_index[i-1]-1];
-            stem_m[i-1] += bpp_mut; stem_m[j-1] += bpp_mut;            
-            stem_o[i-1] += bpp_ori; stem_o[j-1] += bpp_ori;
+    for (int i = ostart; i <= oend; i++) {
+        if (!Both_including(i)) continue;
+        int pos = _index[i-1]+1;
+        for (int j = max(pos-_constraint, 1); j <= min(seq.length, pos+_constraint); j++) {
+            if (abs(pos-j) <= TURN) continue;
+            double bpp_ori = bppm[min(j, pos)-1][abs(j-pos)-1];
+            stem_o[i-start] += bpp_ori;
         }
         count++;
     }
     return count;
 }
 
+void Radiam::Get_mut_stem(Vec& stem_m, int start, int end)
+{
+    for (int i = start; i <= end; i++) {
+        if (!Both_including(i)) continue;
+        int pos = i;
+        for (int j = max(pos-_constraint, 1); j <= min(seq.length, pos+_constraint); j++) {
+            if (abs(pos-j) <= TURN) continue;
+            double bpp_ori = bpp(i, j, true);
+            if (rdebug) cout << "bpp " << i << " " << j << " " << bpp_ori << endl;
+            stem_m[i-start] += bpp_ori;
+        }
+    }
+}
+
+
+int Radiam::Store_stem(Vec& stem_m, Vec& stem_o, int start = -1, int end = -1)
+{
+    if (start < 0) start = 1;
+    if (end < 0) end = seq.length;
+    int count = Get_original_stem(stem_o, start, end);
+    Get_mut_stem(stem_m, start, end);
+    return (end-start+1);
+}
+
 int Radiam::Store_bpp(Vec& bpp_m, Vec& bpp_o)
 {
     int count = 0;
     for (int i = 1; i <= seq.length; i++) {
-        if (_index[i-1] < 0 || (int)bppm.size() <= _index[i-1]) continue;
-        assert(_index[i-1] >= 0 && _index[i-1] < seq.length+1);        
+        if (!Both_including(i)) continue;
         for (int j = i+TURN; j <= min(seq.length, i+_constraint); j++) {
-            if (_index[j-1] < 0 || (int)bppm[_index[i-1]].size() < _index[j-1]-_index[i-1]) continue;
+            if (!Both_including(i, j)) continue;
             double bpp_mut = bpp(i, j);
-            double bpp_ori = bppm[_index[i-1]][_index[j-1]-_index[i-1]-1];
+            double bpp_ori = bppm_get(i, j);
             bpp_m.push_back(bpp_mut);
             bpp_o.push_back(bpp_ori);
             count++;            
@@ -227,41 +283,79 @@ int Radiam::Store_bpp(Vec& bpp_m, Vec& bpp_o)
     return count;
 }
 
+int Radiam::Get_position_binary() 
+{
+    int position = -1;
+    for (int i = 0; i < (int)_mlist.size(); i++) {
+        int tpos = (_mlist[i] >= (int)cons_index.size()) 
+            ? cons_index[(int)cons_index.size()-1]+1 : cons_index[_mlist[i]];
+        position = (position+1)*(all_length+1)+tpos;
+    }
+    return position;
+}
+
+void Radiam::Open_output_file(ofstream& ofs)
+{
+    if (_init) {
+        if (_byte) {
+            ofs.open(outf.c_str(), ios::trunc | ios::binary);
+        } else {
+            ofs.open(outf.c_str(), ios::trunc);
+        }
+    } else {
+        if (_byte) {
+            ofs.open(outf.c_str(), ios::app | ios::binary);
+        } else {
+            ofs.open(outf.c_str(), ios::app | ios::binary);        
+        }
+    }
+}    
+
 void Radiam::Out_header(int count, ofstream& ofs)
 {
-    int position = (_mlist[0] >= (int)cons_index.size()) 
-                 ? cons_index[(int)cons_index.size()-1]+1 : cons_index[_mlist[0]];
-    char after = seq.str[_mlist[0]+1];
-    char before = (_index[_mlist[0]] < 0)
-                 ? 'X' : ori_seq[_index[_mlist[0]]];
-    ofs.write((char*)&id, sizeof(int));
-    ofs.write((char*)&(position), sizeof(int));
-    ofs.write((char*)&(after), sizeof(char));
-    ofs.write((char*)&(before), sizeof(char));
-    ofs.write((char*)&count, sizeof(int));
+    int position = Get_position_binary();
+    char after = 'X';
+    if (Mtype != Del) 
+        after = seq.str[_mlist[0]+1];
+    char before = 'X';
+    if (_mlist[0] < (int)_index.size() && _index[_mlist[0]] >= 0) 
+        before = ori_seq[_mlist[0]];
+    if (_byte) {
+        ofs.write((char*)&id, sizeof(int));
+        ofs.write((char*)&(position), sizeof(int));
+        ofs.write((char*)&(after), sizeof(char));
+        ofs.write((char*)&(before), sizeof(char));
+        ofs.write((char*)&count, sizeof(int));
+    } else {
+        ofs << id << "\t" << position << "\t" << after << "\t"
+            << before << "\t" << count;
+    }
 }
 
 void Radiam::Out_value(double diff, double value, int i, ofstream& ofs)
 {
-    ofs.write((char*)&(cons_index[_index[i-1]]), sizeof(int));
-    ofs.write((char*)&(diff), sizeof(double));    
-    ofs.write((char*)&(value), sizeof(double));
+    if (_byte) {
+        ofs.write((char*)&(cons_index[_index[i-1]]), sizeof(int));
+        ofs.write((char*)&(diff), sizeof(double));    
+        ofs.write((char*)&(value), sizeof(double));
+    } else {
+        ofs << cons_index[_index[i-1]] << "\t" << diff << "\t" << value << endl;
+    }
 }
 
 void Radiam::Output_delta_ene()
 {
-    ofstream ofs;    
-    if (_init)
-        ofs.open(outf.c_str(), ios::trunc | ios::binary);
-    else
-        ofs.open(outf.c_str(), ios::app | ios::binary);
-    _init = false;    
-    vector<double> stem_m = vector<double>(seq.length, 0.0);
-    vector<double> stem_o = vector<double>(seq.length, 0.0);    
-    Out_header(Store_stem(stem_m, stem_o), ofs);
+    ofstream ofs;
+    Open_output_file(ofs);
+    if (!ofs) return;
+    _init = false;        
+    Vec stem_m = Vec(seq.length, 0.0);
+    Vec stem_o = Vec(seq.length, 0.0);
+    int count = Store_stem(stem_m, stem_o);
+    Out_header(count, ofs);
     for (int i = 1; i <= seq.length; i++) {
-        if (_index[i-1] < 0) continue;
-        double diff = stem_o[i-1]-stem_m[i-1];        
+        if (!Both_including(i)) continue;
+        double diff = stem_o[i-1]-stem_m[i-1];
         Out_value(diff, stem_m[i-1], i, ofs);
         //double diff_ene = -Parameter::kT*(log(stem_o[i-1])-log(stem_m[i-1]))/1000.;
         //Output_delta_ene_line(diff, stem_m[i-1], i, ofs);
@@ -269,13 +363,46 @@ void Radiam::Output_delta_ene()
     ofs.close();   
 }
 
+void Radiam::Check_stem(const Vec& stem_m, const Vec& stem_o)
+{
+    cerr << "Check_ori" << endl;
+    for (int i = leftw; i <= rightw; i++) {
+        Check_probability(stem_o[i-leftw]);
+    }
+    cerr << "Check_mut" << endl;    
+    for (int i = leftw; i <= rightw; i++) {
+        Check_probability(stem_m[i-leftw]);    
+    }
+}
+
+void Radiam::Output_delta_around()
+{
+    ofstream ofs;
+    Open_output_file(ofs);
+    if (!ofs) return;
+    _init = false;
+    Vec stem_m = Vec(rightw-leftw+1, 0.0);
+    Vec stem_o = Vec(rightw-leftw+1, 0.0);
+    int count = Store_stem(stem_m, stem_o, leftw, rightw);
+    Check_stem(stem_m, stem_o);
+    Out_header(rightw-leftw+1, ofs);
+    double diff_max = 0;
+    for (int i = leftw; i <= rightw; i++) {
+        if (!Both_including(i)) continue;
+        diff_max = max(fabs(stem_o[i-leftw]-stem_m[i-leftw]), diff_max);
+    }
+    double CC_stem = Calc_bpp_cor(stem_m, stem_o);    
+    Out_value(diff_max, CC_stem, 0, ofs);    
+    ofs.close();   
+}
+
 double Radiam::Euclidean_Distance(const Vec& mut, const Vec& ori) 
 {
     double distance = 0.0;
     for (int i = 0; i < (int)mut.size(); i++) {
-        distance += hypot(mut[i], ori[i]);
+        distance += (mut[i]-ori[i])*(mut[i]-ori[i]);
     }
-    return distance;
+    return sqrt(distance);
 }
 
 void Radiam::Output_ED_CC()
@@ -301,14 +428,19 @@ void Radiam::Output_ED_CC()
     ofs.close();  
 }
 
+void Radiam::Output_acc_around()
+{
+    cout << "null" << endl;
+}
+
 void Radiam::Output_acc_ene()
 {
     for (int i = 1; i <= seq.length; i++) {
         for (int j = i; j <= min(seq.length, i+_constraint); j++) {
-            if (_index[i-1] < 0 || _index[j-1] < 0) continue;
+            if (!Including(i, j)) continue;
             double acc_mut = acc(i, j);
-            double acc_ori = bppm[_index[i-1]][_index[j-1]-_index[i-1]-1];
-            double diff = acc_ori-acc_mut;
+            double acc_ori = bppm_get(i, j);
+            //double diff = acc_ori-acc_mut;
             double diff_ene = -Parameter::kT*(log(acc_ori)-log(acc_mut))/1000.;
             Output_delta_ene_line(diff_ene, i, j);
         }
@@ -351,7 +483,7 @@ void Radiam::Get_ori_matrix(const string& sequence)
     Rfold_Lang model;
     model.calculation(_constraint, sequence, false);
     (_output >= Out::Acc) ? model.Write_acc(bppm) : model.Write_bpp(bppm);
-    ori_alpha = model.alpha;
+    ori_alpha = model.alpha;    
     ori_beta = model.beta;
 }
 
@@ -360,12 +492,14 @@ void Radiam::Set_example()
     _debug = Debug::Bpp;
 }
 
-void Radiam::Set_annotate(string& bp, string& ori, vector<int>& cons)
+void Radiam::Set_annotate(string bp, string ori, vector<int>& cons, int length, bool diff)
 {
     bp_seq = bp;
     ori_seq = ori;
+    all_length = max(length, (int)ori.length());
     cons_index = cons;
-    _debug = Debug::Dif;
+    if (diff)
+        _debug = Debug::Dif;
 }
 
 void Radiam::Set_Output_file(int type)
@@ -391,13 +525,20 @@ void Radiam::Initialize_before_calc(int type, int k, int& constraint, string& se
     if (constraint > length) constraint = length;
     Set_Constraint(constraint, length);
     Set_Output_file(type);
+    if (cons_index.size() == 0) {
+        vector<int> cons;
+        for (int i = 0; i < length; i++) cons.push_back(i);
+        Set_annotate(string(""), sequence, cons, length, false);
+    }
     Get_ori_matrix(sequence);
 }
 
 void Radiam::Set_Correlation(int type, int constraint, string& sequence, bool all) 
 {
     cout << "#-----------------------\n# " << sequence << " dim: " << type << " thres: " 
-         << _precision << " win:" << window << " cons:" << constraint << endl;
+         << _precision << " win:" << window << " cons:" << constraint << " id:" << id << endl;
+    cout << "# ori_len: " << all_length << " ori: " << ori_seq << " bp: " << bp_seq << endl;
+    cout << "# " << outf << endl;
     if (_debug == Debug::Reg) cout << "#type\tabase\tconst\twindow\tpos\trlim\tllim\tcor" << endl;         
     (all) ? All_calculation(type, (int)_mlist.size(), sequence) : Part_calculation(type, (int)_mlist.size(), sequence);
 }
@@ -428,6 +569,65 @@ void Radiam::Correlation_of_bpp(int type, int k, int constraint, string sequence
         All_calculation(type, k, sequence);
         ofs.close(); cout.rdbuf(last);            
     } else Set_Correlation(type, constraint, sequence, true);
+}
+
+void Radiam::SNV_Change_sequence(int type, int k, int i, string sequence, vector<bool>& flag)
+{
+    if (type == Del) {
+        sequence.erase(sequence.begin()+i);
+        SNV_calculation(type, k-1, sequence, flag);
+    } else {
+        for (int j = 0; j < 4; j++) {
+            if (type == Mut && base[j] == sequence[i]) continue;
+            string str = sequence.substr(0, i)+base[j];
+            if (i < (int)sequence.length()) {
+                if (type == In) str += sequence[i];                
+                if (i+1 < (int)sequence.length()) str += sequence.substr(i+1);
+            }
+            SNV_calculation(type, k-1, str, flag);
+        }
+    }
+}
+
+void Radiam::SNV_calculation(int type, int k, string& sequence, vector<bool>& flag)
+{
+    if (k > 0) {
+        int max = (k < (int)_mlist.size()) ? _mlist[k] : (int)sequence.length();
+        int min = k-1;
+        if (type == In) { max++; min = 0; } // Insertion -> same position OK;
+        for (int i = min; i < max; i++) {
+            if (flag[i]) {
+                _mlist[k-1] = i;
+                SNV_Change_sequence(type, k, i, sequence, flag);
+            }
+        }
+    } else {
+        if (_debug == Debug::Analyze) Print_mlist(type, sequence);
+        if (_debug == Debug::Time) Calc_time(type, sequence);
+        else {
+            Calc_matrix(type, sequence);
+        }
+    }
+}
+
+void Radiam::Mutation_analysis(int type, int k, int constraint, string& sequence, vector<bool>& flag) 
+{
+    _mlist = vector<int>(k);
+    Initialize_before_calc(type, (int)_mlist.size(), constraint, sequence);
+    if (_debug == Debug::Reg) {
+        streambuf* last = cout.rdbuf();
+        ofstream ofs(outf.c_str(), (_init) ? ios::trunc : ios::app);
+        cout.rdbuf(ofs.rdbuf());
+        SNV_calculation(type, k, sequence, flag);
+        ofs.close(); cout.rdbuf(last);            
+    } else Set_Correlation(type, constraint, sequence, true);
+}
+
+void Radiam::SNV_analysis(int type, int k, int constraint, string& sequence, vector<bool>& flag) 
+{
+    _mlist = vector<int>(k);
+    Initialize_before_calc(type, (int)_mlist.size(), constraint, sequence);
+    SNV_calculation(type, k, sequence, flag);
 }
 
 }

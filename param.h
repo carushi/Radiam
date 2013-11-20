@@ -141,7 +141,6 @@ static double LogHairpinEnergy(int i, int j, const Sequence& seq)
             q = Logsum(q, logTermAU);                
     } else 
         q = Logsum(q, logmismatchH[type][seq.sequence[i+1]][seq.sequence[j-1]]);
-    //cout << "hairpin" << i << " " << j << " " << seq.str[i] << seq.str[j] << " " << q << endl;
     return q;
 }
 

@@ -129,11 +129,9 @@ void Radiam::Write_bppm_fluc_abs(const Mat& bpp_mut)
 {
     vector<pair<double, double> > max_fluc((int)bpp_mut.size(), pair<double, double>(0, 0.0));
     vector<pair<double, double> > min_fluc((int)bpp_mut.size(), pair<double, double>(0, 0.0));
-    //Print_Vec(_index, true);
     for (int i = 0; Within_range(i, bpp_mut); i++) {
         for (int j = i+1; Within_range(i, j, bpp_mut); j++) {
             if (_index[j] < 0) continue;
-            //cout << i << " " << j << " " << _index[i] << " " << _index[j] << endl;
             double diff = Get_diff_at_same(i, j, bpp_mut);
             if (diff >= 0.0) {
                 if (max_fluc[i].first < diff) max_fluc[i] = pair<double, double>(diff, bpp_mut[i][j-i-1]);
@@ -252,38 +250,71 @@ void Radiam::Set_bpp_binary(int type, int constraint, string& sequence)
     Copy_matrix(type);
 }
 
-void Radiam::Debug_bppm(int type, string& sequence, int l, int r)
+void Radiam::Get_mut_ori_mat(Mat& bpp_mut, Mat& bpp_ori, int constraint, string sequence)
 {
     Rfold_Lang model2;
     model2.calculation(_constraint, sequence);
-    Mat bpp_mut, bpp_ori;
-    Write_bpp(bpp_mut); model2.Write_bpp(bpp_ori);
-    double tmax = -INF, t1 = 0.0;
-    for (int i = 0; i < (int)bpp_mut.size(); i++) {
-        for (int j = 0; j < (int)bpp_mut[i].size(); j++) {
-            if (l > i+1 || j+i+2 > r) continue;
-            double diff = (_output == Out::Abs) ? fabs(bpp_ori[i][j]-bpp_mut[i][j])
-                                   : Get_diff(bpp_ori[i][j], bpp_mut[i][j]);
-            if (tmax < diff) {
-                tmax = diff; t1 = bpp_mut[i][j];
-            }
-        }
-    }
-    cout << "* same_bpp_fluc " << tmax << " " << t1 << endl;    
-}
-
-void Radiam::Debug_bppm(int type, string& sequence)
-{
-    Rfold_Lang model2;
-    model2.calculation(_constraint, sequence);
-    Mat bpp_mut, bpp_ori;
-    if (_output >= Out::Acc) {
+    if (_output >= Out::Acc) {    
         Write_acc(bpp_mut); model2.Write_acc(bpp_ori);
     } else {
         Write_bpp(bpp_mut); model2.Write_bpp(bpp_ori);
     }
+}
+
+void Radiam::Debug_bppm(int type, string& sequence)
+{
+    Mat bpp_mut, bpp_ori;
+    Get_mut_ori_mat(bpp_mut, bpp_ori, _constraint, sequence);
     Write_bppm_dif(bpp_mut, bpp_ori);
- }
+}
+
+void Radiam::Debug_bppm(int type, string& sequence, int l, int r)
+{
+    Mat bpp_mut, bpp_ori;
+    Get_mut_ori_mat(bpp_mut, bpp_ori, _constraint, sequence);
+    if (type != Mut) {
+        cerr << "cannot compare" << endl;
+    }
+    cerr << _mpoint[0] << " " << l << " " << r << endl;
+    double tmax = -INF, t1 = 0.0, t2 = 0.0;
+    for (int i = 0; i < (int)bpp_mut.size(); i++) {
+        for (int j = 0; j < min(_constraint, (int)bpp_mut[i].size()); j++) {
+            if (l < i+1 || r > i+j+1) continue;
+            //if (l > i+j+1 || i+1 > r) continue;
+            double diff = (_output == Out::Abs) ? fabs(bpp_ori[i][j]-bpp_mut[i][j])
+                                   : Get_diff(bpp_ori[i][j], bpp_mut[i][j]);
+            Check_probability(bpp_ori[i][j]);
+            Check_probability(bpp_mut[i][j]);            
+            if (diff > 1e-6) {
+                cerr << i+1 << " " << i+j+1 << " " << diff << " " << bpp_ori[i][j] << " " << bpp_mut[i][j] << endl;
+            }
+            if (tmax < diff) {
+                tmax = diff; t1 = bpp_mut[i][j]; t2 = bpp_ori[i][j];
+                if (diff > 0.00001)
+                    cerr << "* diff " << tmax << " " << t1 << " " << t2 << endl;
+            }
+        }
+    }
+    cerr << "* same_bpp_fluc " << tmax << " " << t1 << " " << t2 << endl;    
+}
+
+void Radiam::Debug_multiple_mutations_stem()
+{
+    Mat bpp_mut, bpp_ori;
+    Get_mut_ori_mat(bpp_mut, bpp_ori, _constraint, seq.str.substr(1));
+    vector<double> stem_o = vector<double>(seq.length, 0.0);
+    vector<double> stem_m = vector<double>(seq.length, 0.0);    
+    for (int i = 0; i < (int)bpp_mut.size(); i++) {
+        for (int j = 0; j < (int)bpp_mut[i].size(); j++) {
+            stem_m[i] += bpp_mut[i][j];
+            stem_o[i] += bpp_ori[i][j];
+            stem_m[i+1+j] += bpp_mut[i][j];
+            stem_o[i+1+j] += bpp_ori[i][j];
+            assert(fabs(bpp_mut[i][j]-bpp_ori[i][j]) < 0.00000001);
+        }
+    }
+}
+
 
 void Radiam::Debug_confirm(int type, string& sequence)
 {
@@ -308,7 +339,7 @@ bool Radiam::compare_same(int type, const Vec& ori, const Vec& mut)
         if (Is_INF(*it) && Is_INF(*it2)) value = 0.0;
         else if (Is_INF(*it) || Is_INF(*it2)) value = INF;
         else value = *it2-*it;
-        if (log10(value)-log10(*it2) >= -DEF_PRE) {
+        if (value != 0.0 && (*it2 != 0 || log10(value)-log10(*it2) >= -DEF_PRE)) {
             cout << "dif " << value << " mut " << *it << " ori " << *it2 << " " << log10(value) << " " << log10(*it2) << endl;
             return true;
         }

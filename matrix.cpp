@@ -32,6 +32,7 @@ void Matrix::Print(const string& str)
     Print_Mat(multi2, str);        
     cout << "---outer" << endl;
     Print_Vec(outer, true);
+
 }
 
 void Matrix::erase(int j) 

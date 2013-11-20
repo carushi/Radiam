@@ -108,7 +108,7 @@ bool Radiam::Set_constant_inner(int j, int left, int right, int mp)
 
 double Radiam::Get_min_inner(int j, int mp)
 {
-    double min_val;
+    double min_val = INF;
     for (int type = Stem; type <= Multibif; type++) {
         Mat& mut = Get_inner(false, type, true);
         Mat& ori = Get_inner(false, type, false);
@@ -163,7 +163,7 @@ void Radiam::Calc_outside()
     for (int mp = (int)_mpoint.size()-1; mp >= 0; mp--) {
         if (_calc == Calc::Omit || _calc == Calc::OmitOut) Add_outside_inner(mp, j);
         int end = (mp > 0) ? _mpoint[mp-1]+1 : TURN+1;
-        int const_end = (mp > 0) ? max(_left_limit[mp], _right_limit[mp-1]) : TURN+1;
+        //int const_end = (mp > 0) ? max(_left_limit[mp], _right_limit[mp-1]) : TURN+1;
         for (; j >= end; j--) {
             if (rdebug) cout << "----------------\n-j " << j << endl;
             Calc_outside_inner(j, mp);
@@ -178,6 +178,7 @@ void Radiam::Calc_out_outer()
         int start = _mpoint[mp]+1;
         int end = (mp > 0) ? _mpoint[mp-1]+2 : 0; 
         for (int j = min(start, seq.length-1); j >= end; j--) {
+            if (rdebug) cout << "----------------\n-j " << j << endl;
             Calc_one_out_outer(j);
             if (_calc >= Calc::Omit || _debug == Debug::Outer) {
                 if (Set_constant_out(j, end, start, mp)) break;  // (start-1)-(_constraint+1) 
@@ -189,24 +190,25 @@ void Radiam::Calc_out_outer()
 void Radiam::Calc_outside_inner(int j, int mp)
 {
     for (int i = max(0, j-_constraint-1); i < j-TURN-1; i++) {
-        if (rdebug) cout << "--i " << i << " " << _mpoint[mp] << endl;        
-        if (((int)_mlist.size() == 1 || _calc == Omit) && !Out_in_range(i, j, mp)) {
+        if (((int)_mlist.size() == 1 && !Out_in_range(i, j, mp)) 
+             || ((int)_mlist.size() > 1 && (_calc != Calc::Omit || !Out_in_range(i, j, mp)))) {
             if (i > 0 && j < seq.length) {    
                 Calc_outside_mat(i, j);
                 if (rdebug) cout << "calc" << endl;
             }
-            beta.stem[j][j-i] = Calc_out_stem(i, j);                
+            beta.stem[j][j-i] = Calc_out_stem(i, j);    
         } else {
+            if (rdebug) cout << "copy" << endl;
             if (mp == 0) continue;
             double value = _constant[(int)_mlist.size()-1]-(_constant[mp]-_constant[mp-1]);
             Copy_const_inner(i, j, beta, value);
         }
-    } 
+    }
 }
 
 double Radiam::Calc_partition_function()
 {
-    if (seq.length >= rightw+_constraint) {
+    if (seq.length >= rightw+_constraint+1) {
         int j = _mpoint[0]+2;
         double pf = Logsum(alpha.outer[max(0, j-1)], beta.outer[j]); // all outer;
         for (int k = max(0, j-_constraint-1); k < j; k++) {
@@ -225,34 +227,35 @@ double Radiam::Calc_partition_function()
 void Radiam::Calc_min_inside()
 {
     int start = _mpoint[0];
-    int end = min(seq.length, rightw+_constraint);
+    int end = min(seq.length, rightw+_constraint+1);
     for (int j = max(start, TURN+1); j <= end; j++) {
-        if (rdebug) cout << "-------------------\n-j " << j << endl;    
+        if (rdebug) cout << "-------------------\n-j " << j << endl;
         if (In_range(j, start) <= 0) {
             for (int i = min(j-TURN, start+1); i >= max(0, j-_constraint-1); i--) {
                 if (rdebug) cout << "--i " << i << endl;                
                 Calc_inside_mat(i, j);
             }
         }
-        Calc_in_outer(j);
+        Calc_in_outer(j);    
     }
 }
 
 void Radiam::Calc_min_outside(double diff)
 {
     Calc_min_out_outer();
-    int start = rightw+_constraint;
-    int end = max(leftw-_constraint, 0);
-    for (int j = min(start, seq.length-1); j >= end; j--) {
-        for (int i = max(end, j-_constraint-1); i < j-TURN-1; i++) {
+    int start = min(seq.length, rightw+_constraint+1);
+    int end = max(leftw-_constraint-1, 0);
+    for (int j = start; j >= end; j--) {
+        for (int i = max(end, j-_constraint-1); i < j-TURN; i++) {
             if (i > 0 && j < seq.length) {
-                if (!Out_in_range(i, j, 0)) Calc_outside_mat(i, j);
+                //if (!Out_in_range(i, j, 0))
+                Calc_outside_mat(i, j);
             }
             beta.stem[j][j-i] = Calc_out_stem(i, j);
         }
     }
 
-}
+}   
 
 void Radiam::Calc_min_out_outer()
 {
@@ -265,6 +268,8 @@ void Radiam::Add_outside_inner(int mp, int& j)
 {
     if (In_range(j, _right_limit[mp]) >= 0) {
         Add_constant_inner(_right_limit[mp]+_constraint+1, j, _constant[(int)_mlist.size()-1]);
+        if (rdebug) cout << "add " << _right_limit[mp]+_constraint+1 << " " << j
+            << _constant[(int)_mlist.size()-1] << endl;
         j = _right_limit[mp]+_constraint;
     } else if (j == seq.length+1) j = seq.length;
 }
@@ -316,7 +321,7 @@ void Radiam::Calc_one_bpp_cor()
 {
     Vec bpp_mut, bpp_ori;
     Get_cor_vec(leftw, rightw, bpp_mut, bpp_ori);
-    //Write_bpp(false);    
+    //Write_stem(false);
     Output_correlation(Calc_bpp_cor(bpp_mut, bpp_ori));
 }
 

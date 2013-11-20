@@ -31,8 +31,9 @@ using std::back_inserter;
 using std::distance;
 using std::swap;
 
+#define DOUBLE double
 
-typedef vector<double> Vec;
+typedef vector<DOUBLE> Vec;
 typedef vector<Vec> Mat;
 
 
@@ -49,23 +50,23 @@ struct Base {
 };
 
 
-inline static bool Is_INF(const double value) {
+inline static bool Is_INF(const DOUBLE value) {
         return (value <= -INF);    
 }
-inline static double Logsumexp(double x, double y) {
+inline static DOUBLE Logsumexp(DOUBLE x, DOUBLE y) {
     if (x == -INF) return y;
     else if (y == -INF) return x;
     else if (x > y) return ((x + log(exp(y-x) + 1.0)));
     else return ((y + log(exp(x-y) + 1.0)));
 }
-inline static double Logsum(double a, double b) {
+inline static DOUBLE Logsum(DOUBLE a, DOUBLE b) {
     if (Is_INF(a) || Is_INF(b)) return -INF;
     else return a+b;
 }
-inline static double Logsum(double a, double b, double c) {
+inline static DOUBLE Logsum(DOUBLE a, DOUBLE b, DOUBLE c) {
     return Logsum(a, Logsum(b, c));
 }
-inline static double Logsum(double a, double b, double c, double d) {
+inline static DOUBLE Logsum(DOUBLE a, DOUBLE b, DOUBLE c, DOUBLE d) {
     return Logsum(Logsum(a, b), Logsum(c, d));
 }
 inline static bool Can_bind(int type) {
@@ -84,9 +85,10 @@ public:
     int length;    
     string str;
     vector<int> sequence;
+
     Sequence() {}
     Sequence(const string& str, const vector<int>& sequence, int length)
-             : str(str), sequence(sequence), length(length) {}
+             : length(length), str(str), sequence(sequence) {}
     ~Sequence() {}
 };
 template<class Data>
@@ -119,6 +121,18 @@ public:
         outer = Vec(_length+1, 0.0);
     }
     virtual ~Matrix(){}
+    void operator=(const Matrix& right) {
+        outer = right.outer;
+        stem = right.stem;
+        stemend = right.stemend;
+        multi = right.multi;
+        multi1 = right.multi1;
+        multi2 = right.multi2;
+        multibif = right.multibif;
+        _length = right._length;
+        _constraint = right._constraint;
+        _inside = right._inside;
+    }
     void Initialize(); 
     static void Print_Mat(const Mat&, const string&);
     void Print(const string&);
